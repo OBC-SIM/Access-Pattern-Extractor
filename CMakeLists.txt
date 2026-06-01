@@ -66,6 +66,12 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         pthread
     )
     add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
+    add_test(NAME StructFixtureTrace
+        COMMAND sh
+            ${CMAKE_SOURCE_DIR}/tests/run_struct_fixture.sh
+            ${CMAKE_SOURCE_DIR}
+            $<TARGET_FILE:LoopAnnotatedTrace>
+    )
 else()
     message(WARNING "GTest not found — skipping unit tests")
 endif()

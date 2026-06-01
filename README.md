@@ -124,6 +124,11 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 }
 ```
 
+`tasks/test_struct.c`는 이 계약을 확인하는 fixture입니다. CTest의
+`StructFixtureTrace`는 실제 `clang-14`와 `opt-14`를 실행해 `o.items.x`,
+`o.items.y`, `metadata.structs`의 field offset/type 정보가 유지되는지
+검증합니다.
+
 ---
 
 ## 빌드
@@ -189,6 +194,7 @@ ctest --test-dir build
 | `GetValueName` | 함수 파라미터·call argument 이름 추출 |
 | `GetIndexVars` | 전역/파라미터 배열 GEP chain 다차원 index 보존 |
 | `FunctionAnnotation` | `yard.analyze` / `yard.inline` annotation 감지 |
+| `StructFixtureTrace` | 구조체 fixture의 실제 pass 출력 검증 |
 
 ---
 
@@ -210,5 +216,6 @@ tests/
 ├── Statement_test.cpp
 ├── IrHelpers_test.cpp
 ├── IrHelpersGep_test.cpp
-└── ArrayMetadata_test.cpp
+├── ArrayMetadata_test.cpp
+└── run_struct_fixture.sh
 ```
