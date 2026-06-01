@@ -3,6 +3,8 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Operator.h"
 
+#include "../include/AccessMetadataBuilder.hpp"
+
 using namespace llvm;
 
 namespace lat {
@@ -39,17 +41,22 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     Instruction& I,
     ScalarEvolution& SE,
     const NameMap& names,
+    const AccessMetadata& metadata,
+    const Function& current,
     std::string op) {
     if (auto* GEP = dyn_cast<GEPOperator>(ptr)) {
-        auto indices = getIndexVars(GEP, SE, names);
-        std::string base = getBaseName(GEP->getPointerOperand(), names);
+        auto desc = describeGepAccess(GEP, SE, names, metadata);
+        std::string base = desc.first;
+        auto indices = std::move(desc.second);
         if (indices.empty())
             return std::make_unique<ScalarAccess>(base, std::move(op));
-        return std::make_unique<ArrayAccess>(
+        auto access = std::make_unique<ArrayAccess>(
             base,
             indices,
             getArrayMetadata(GEP, I.getModule()->getDataLayout()),
             std::move(op));
+        access->setObjectId(getObjectId(GEP->getPointerOperand(), current, names));
+        return access;
     }
 
     Value* base = ptr->stripPointerCasts();
@@ -58,9 +65,12 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
 
     std::string name = getBaseName(ptr, names);
     for (const User* U : base->users()) {
-        if (isa<GetElementPtrInst>(U))
-            return std::make_unique<ArrayAccess>(
+        if (isa<GetElementPtrInst>(U)) {
+            auto access = std::make_unique<ArrayAccess>(
                 name, std::vector<std::string>{"0"}, std::move(op));
+            access->setObjectId(getObjectId(ptr, current, names));
+            return access;
+        }
     }
     return std::make_unique<ScalarAccess>(name, std::move(op));
 }
@@ -69,6 +79,7 @@ std::unique_ptr<Statement> makeAccessFromInstr(
     Instruction& I,
     ScalarEvolution& SE,
     const NameMap& names,
+    const AccessMetadata& metadata,
     const std::set<const Function*>& inlineFuncs,
     const Function& current) {
     if (auto* Call = dyn_cast<CallBase>(&I))
@@ -79,7 +90,7 @@ std::unique_ptr<Statement> makeAccessFromInstr(
     if (!ptr)
         return nullptr;
 
-    return makeArrayOrScalar(ptr, I, SE, names, std::move(op));
+    return makeArrayOrScalar(ptr, I, SE, names, metadata, current, std::move(op));
 }
 
 }  // namespace lat

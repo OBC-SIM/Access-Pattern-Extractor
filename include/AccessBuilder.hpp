@@ -12,6 +12,8 @@
 
 namespace lat {
 
+struct AccessMetadata;
+
 /**
  * @brief LLVM instruction 하나를 LAT access/call Statement로 변환한다.
  *
@@ -30,6 +32,7 @@ std::unique_ptr<Statement> makeAccessFromInstr(
     llvm::Instruction& I,
     llvm::ScalarEvolution& SE,
     const NameMap& names,
+    const AccessMetadata& metadata,
     const std::set<const llvm::Function*>& inlineFuncs,
     const llvm::Function& current);
 

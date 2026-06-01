@@ -102,6 +102,16 @@ TEST(ArrayAccess, JsonMetadataFields) {
     EXPECT_EQ(i64(obj->getInteger("elem_size")), 8);
 }
 
+TEST(ArrayAccess, JsonObjectFieldWhenPresent) {
+    ArrayAccess a("arr", {"i"});
+    a.setObjectId("global::arr");
+    JsonExportVisitor vis;
+    a.accept(vis);
+    auto* obj = toObj(vis.getResult());
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(str(obj->getString("object")), "global::arr");
+}
+
 TEST(ArrayAccess, JsonOneDimensional) {
     ArrayAccess a("vec", {"k"});
     JsonExportVisitor vis;

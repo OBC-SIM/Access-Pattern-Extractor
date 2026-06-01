@@ -1,1 +1,5 @@
 build/
+system-prompt-extraction/
+tasks/
+.cache/
+

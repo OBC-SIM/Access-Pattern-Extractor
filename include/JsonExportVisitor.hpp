@@ -36,6 +36,8 @@ public:
             {"name",    node.getArrayName()},
             {"indices", std::move(indices)}
         };
+        if (!node.getObjectId().empty())
+            obj["object"] = node.getObjectId();
         const auto& metadata = node.getMetadata();
         if (!metadata.shape.empty()) {
             llvm::json::Array shape;

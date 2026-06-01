@@ -20,6 +20,8 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "../include/AccessBuilder.hpp"
+#include "../include/AccessMetadata.hpp"
+#include "../include/AccessMetadataBuilder.hpp"
 #include "../include/IrHelpers.hpp"
 #include "../include/JsonExportVisitor.hpp"
 #include "../include/Statement.hpp"
@@ -28,6 +30,7 @@ using namespace llvm;
 // lat::LoopNest는 llvm::LoopNest와 충돌하므로 명시적으로 lat:: 사용
 using lat::NameMap;
 using lat::Statement;
+using lat::buildAccessMetadata;
 using lat::buildDebugNameMap;
 using lat::getInductionVarName;
 using lat::getTripCount;
@@ -46,6 +49,7 @@ constexpr llvm::StringLiteral InlineAnnotation = "yard.inline";
 static std::unique_ptr<lat::LoopNest> buildLoopNest(Loop* L, ScalarEvolution& SE,
                                                 unsigned depth, const NameMap& names,
                                                 const std::set<const Function*>& inlineFuncs,
+                                                const lat::AccessMetadata& metadata,
                                                 const Function& current);
 
 /**
@@ -62,6 +66,7 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(Loop* L, ScalarEvolution& SE
 static void populateBody(Loop* L, ScalarEvolution& SE, unsigned depth,
                          lat::LoopNest& nest, const NameMap& names,
                          const std::set<const Function*>& inlineFuncs,
+                         const lat::AccessMetadata& metadata,
                          const Function& current) {
     std::set<BasicBlock*>        subLoopBlocks;
     std::map<BasicBlock*, Loop*> subLoopHeaders;
@@ -78,14 +83,14 @@ static void populateBody(Loop* L, ScalarEvolution& SE, unsigned depth,
             if (!processed.count(hIt->second)) {
                 processed.insert(hIt->second);
                 nest.addChild(buildLoopNest(
-                    hIt->second, SE, depth + 1, names, inlineFuncs, current));
+                    hIt->second, SE, depth + 1, names, inlineFuncs, metadata, current));
             }
             continue;
         }
         if (subLoopBlocks.count(BB)) continue;
 
         for (Instruction& I : *BB)
-            if (auto stmt = makeAccessFromInstr(I, SE, names, inlineFuncs, current))
+            if (auto stmt = makeAccessFromInstr(I, SE, names, metadata, inlineFuncs, current))
                 nest.addChild(std::move(stmt));
     }
 }
@@ -93,10 +98,11 @@ static void populateBody(Loop* L, ScalarEvolution& SE, unsigned depth,
 static std::unique_ptr<lat::LoopNest> buildLoopNest(Loop* L, ScalarEvolution& SE,
                                                 unsigned depth, const NameMap& names,
                                                 const std::set<const Function*>& inlineFuncs,
+                                                const lat::AccessMetadata& metadata,
                                                 const Function& current) {
     auto nest = std::make_unique<lat::LoopNest>(getInductionVarName(L, SE, names),
                                            getLoopStart(L, SE), getTripCount(L, SE), depth);
-    populateBody(L, SE, depth, *nest, names, inlineFuncs, current);
+    populateBody(L, SE, depth, *nest, names, inlineFuncs, metadata, current);
     return nest;
 }
 
@@ -118,6 +124,7 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(Loop* L, ScalarEvolution& SE
 static void buildRootStatements(Function& F, LoopInfo& LI, ScalarEvolution& SE,
                                  const NameMap& names,
                                  const std::set<const Function*>& inlineFuncs,
+                                 const lat::AccessMetadata& metadata,
                                  std::vector<std::unique_ptr<Statement>>& root) {
     std::map<BasicBlock*, Loop*> topLoopHeaders;
     std::set<BasicBlock*>        topLoopBlocks;
@@ -134,14 +141,15 @@ static void buildRootStatements(Function& F, LoopInfo& LI, ScalarEvolution& SE,
         if (hIt != topLoopHeaders.end()) {
             if (!processed.count(hIt->second)) {
                 processed.insert(hIt->second);
-                root.push_back(buildLoopNest(hIt->second, SE, 1, names, inlineFuncs, F));
+                root.push_back(buildLoopNest(hIt->second, SE, 1, names, inlineFuncs,
+                                             metadata, F));
             }
             continue;
         }
         if (topLoopBlocks.count(BB)) continue;
 
         for (Instruction& I : *BB)
-            if (auto stmt = makeAccessFromInstr(I, SE, names, inlineFuncs, F))
+            if (auto stmt = makeAccessFromInstr(I, SE, names, metadata, inlineFuncs, F))
                 root.push_back(std::move(stmt));
     }
 }
@@ -161,6 +169,7 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass> {
                 inlineFuncs.insert(&F);
         }
 
+        lat::AccessMetadata metadata = buildAccessMetadata(M);
         llvm::json::Array moduleFuncs;
         for (Function& F : M) {
             if (F.isDeclaration()) continue;
@@ -173,7 +182,7 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass> {
             NameMap names = buildDebugNameMap(F);
 
             std::vector<std::unique_ptr<Statement>> root;
-            buildRootStatements(F, LI, SE, names, inlineFuncs, root);
+            buildRootStatements(F, LI, SE, names, inlineFuncs, metadata, root);
 
             llvm::json::Array params;
             for (Argument& Arg : F.args())
@@ -208,7 +217,12 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass> {
                    << EC.message() << "\n";
             return PreservedAnalyses::all();
         }
-        OS << llvm::json::Value(std::move(moduleFuncs));
+        llvm::json::Object root;
+        root["schema_version"] = 2;
+        root["metadata"] = lat::toJson(metadata);
+        root["functions"] = std::move(moduleFuncs);
+
+        OS << llvm::json::Value(std::move(root));
         errs() << "[LoopAnnotatedTrace] wrote " << filename << "\n";
         return PreservedAnalyses::all();
     }

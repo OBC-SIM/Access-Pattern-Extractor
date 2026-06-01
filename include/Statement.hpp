@@ -73,11 +73,14 @@ public:
     const std::vector<std::string>& getIndexVars()  const { return index_vars_; }
     const ArrayMetadata& getMetadata()              const { return metadata_; }
     const std::string& getOp()                      const { return op_; }
+    const std::string& getObjectId()                const { return object_id_; }
+    void setObjectId(std::string id) { object_id_ = std::move(id); }
 private:
     std::string              array_name_;
     std::vector<std::string> index_vars_;
     ArrayMetadata            metadata_;
     std::string              op_;
+    std::string              object_id_;
 };
 
 // ── CallStmt: 단말 노드 ───────────────────────────────────
