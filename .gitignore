@@ -1,5 +1,6 @@
 build/
 system-prompt-extraction/
-tasks/
+tasks/*.json
+tasks/*.ll
 .cache/
 
