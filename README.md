@@ -8,15 +8,121 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 ## 출력 형식
 
-`<name>_g_lat.json` — 함수별 LAT JSON.
+`<name>_g_lat.json` — LAT v2 JSON.
+
+> **Breaking change:** v2부터 JSON root는 function 배열이 아니라
+> `schema_version`, `metadata`, `functions`를 갖는 object입니다.
+
+```json
+{
+  "schema_version": 2,
+  "metadata": {
+    "objects": {
+      "global::A": {
+        "id": "global::A",
+        "name": "A",
+        "scope": "global",
+        "storage": "global",
+        "kind": "array",
+        "shape": [100],
+        "elem_type": "i32",
+        "elem_size": 4,
+        "llvm_type": "[100 x i32]"
+      }
+    },
+    "structs": {}
+  },
+  "functions": [
+    {
+      "function": "test_constatnt_variable",
+      "params": [],
+      "annotations": ["yard.analyze"],
+      "body": [
+        {
+          "type": "Loop",
+          "var": "i",
+          "start": 0,
+          "bound": 50,
+          "depth": 1,
+          "body": [
+            {
+              "type": "Array",
+              "name": "A",
+              "object": "global::A",
+              "indices": ["i"],
+              "shape": [100],
+              "elem_size": 4,
+              "op": "store"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Root fields
+
+| 필드 | 설명 |
+|---|---|
+| `schema_version` | LAT schema version. 현재 값은 `2` |
+| `metadata` | access node가 참조하는 object와 structure layout metadata |
+| `functions` | 분석된 함수 wrapper 배열 |
+
+### Metadata fields
+
+`metadata.objects`는 access node의 `object` id로 참조됩니다.
+
+| 필드 | 설명 |
+|---|---|
+| `id` | canonical object id. 예: `global::A`, `function:f::param:A` |
+| `name` | 표시용 source-level 이름 |
+| `scope` | `global` 또는 `function:<name>` |
+| `storage` | `global`, `param`, `local` |
+| `kind` | `array`, `pointer`, `struct`, `scalar` |
+| `shape` | 배열 차원. 배열이 아니면 생략 가능 |
+| `elem_type` | 파서가 사용할 원소 타입 이름 |
+| `elem_size` | 원소 byte size |
+| `llvm_type` | 디버깅용 LLVM IR type 문자열 |
+
+`metadata.structs`는 구조체 ABI layout을 담습니다.
+
+| 필드 | 설명 |
+|---|---|
+| `name` | 구조체 이름 |
+| `size` | 구조체 byte size |
+| `align` | 구조체 ABI alignment |
+| `fields` | field metadata 배열 |
+
+Field metadata는 `name`, `index`, `offset`, `size`와 함께 `kind`, `shape`,
+`elem_type`, `elem_size`, `llvm_type`을 가질 수 있습니다. `-g` debug info에서
+source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
+
+`llvm_type`은 디버깅용입니다. 소비자는 LLVM type 문자열을 파싱하지 말고
+`kind`, `shape`, `elem_type`, `elem_size`를 사용해야 합니다.
+
+### Function body nodes
 
 | 노드 타입 | 주요 필드 | 설명 |
 |-----------|-----------|------|
 | Function wrapper | `function`, `params`, `annotations`, `body` | 함수 이름·파라미터·본문 |
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
-| `Array` | `name`, `indices`, `op`, `shape`, `elem_size` | 배열 접근. `op`는 `"load"` 또는 `"store"` |
+| `Array` | `name`, `object`, `indices`, `op`, `shape`, `elem_size` | 배열 접근. `object`는 `metadata.objects` key |
 | `Scalar` | `name`, `op` | 스칼라 접근 |
 | `Call` | `callee`, `args` | `yard.inline` 함수 호출 |
+
+구조체 access는 깊은 path 배열 대신 얕은 표시 이름을 사용합니다.
+
+```json
+{
+  "type": "Array",
+  "name": "o.items.x",
+  "object": "function:probe::param:o",
+  "indices": ["i"],
+  "op": "store"
+}
+```
 
 ---
 

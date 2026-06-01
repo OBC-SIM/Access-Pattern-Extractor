@@ -13,6 +13,14 @@
 using namespace lat;
 using namespace llvm;
 
+static std::string str(llvm::Optional<llvm::StringRef> opt) {
+    return opt ? opt->str() : "";
+}
+
+static int64_t i64(llvm::Optional<int64_t> opt) {
+    return opt.getValueOr(0);
+}
+
 TEST(AccessMetadataBuilder, CollectsStructLayout) {
     LLVMContext Ctx;
     Module M("metadata", Ctx);
@@ -97,4 +105,50 @@ TEST(AccessMetadataBuilder, DistinguishesObjectIdsByScope) {
 
     EXPECT_EQ(getObjectId(&*F->arg_begin(), *F, names), "function:foo::param:A");
     EXPECT_EQ(getObjectId(Local, *F, names), "function:foo::local:A");
+}
+
+TEST(AccessMetadataJson, EmitsParseableObjectTypeInfo) {
+    ObjectMetadata object;
+    object.id = "global::A";
+    object.name = "A";
+    object.scope = "global";
+    object.storage = "global";
+    object.kind = "array";
+    object.shape = {100};
+    object.elem_type = "i32";
+    object.elem_size = 4;
+    object.llvm_type = "[100 x i32]";
+
+    llvm::json::Object obj = toJson(object);
+
+    EXPECT_FALSE(obj.getString("type").hasValue());
+    EXPECT_EQ(str(obj.getString("kind")), "array");
+    auto* shape = obj.getArray("shape");
+    ASSERT_NE(shape, nullptr);
+    ASSERT_EQ(shape->size(), 1u);
+    EXPECT_EQ(i64((*shape)[0].getAsInteger()), 100);
+    EXPECT_EQ(str(obj.getString("elem_type")), "i32");
+    EXPECT_EQ(i64(obj.getInteger("elem_size")), 4);
+    EXPECT_EQ(str(obj.getString("llvm_type")), "[100 x i32]");
+}
+
+TEST(AccessMetadataJson, EmitsParseableFieldTypeInfo) {
+    FieldMetadata field;
+    field.name = "items";
+    field.index = 1;
+    field.offset = 8;
+    field.size = 64;
+    field.kind = "array";
+    field.shape = {4};
+    field.elem_type = "S";
+    field.elem_size = 16;
+    field.llvm_type = "[4 x %struct.S]";
+
+    llvm::json::Object obj = toJson(field);
+
+    EXPECT_FALSE(obj.getString("type").hasValue());
+    EXPECT_EQ(str(obj.getString("kind")), "array");
+    EXPECT_EQ(str(obj.getString("elem_type")), "S");
+    EXPECT_EQ(i64(obj.getInteger("elem_size")), 16);
+    EXPECT_EQ(str(obj.getString("llvm_type")), "[4 x %struct.S]");
 }
