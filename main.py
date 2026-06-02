@@ -47,7 +47,7 @@ def compile_c(c_path: Path) -> Path:
 def _to_ll(path: Path) -> Path:
     """입력이 .c면 컴파일, .ll이면 그대로 반환."""
     if path.suffix == ".c":
-        print(f"  [0/2] clang-14 컴파일 중...", end=" ", flush=True)
+        print(f"  [1/2] clang-14 컴파일 중...", end=" ", flush=True)
         ll = compile_c(path)
         print(f"완료 → {ll.name}")
         return ll
@@ -108,7 +108,6 @@ def main() -> None:
             print(f"오류: .c 또는 .ll 파일만 지원합니다: {path}", file=sys.stderr)
             continue
         try:
-            print(f"  [1/2] {path.name} 컴파일 중...")
             ll_path = _to_ll(path)
             print(f"  [2/2] opt-14 실행 중...", end=" ", flush=True)
             json_path = run_llvm_pass(ll_path, plugin)
