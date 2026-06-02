@@ -2,7 +2,7 @@
 
 LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하는 LLVM Pass 플러그인입니다.
 
-[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `yard.analyze` / `yard.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 Loop Annotated Trace(LAT) JSON을 출력합니다.
+[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `yard.analyze` / `yard.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/LAT v2 JSON을 출력합니다.
 
 ---
 
@@ -50,8 +50,6 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
               "name": "A",
               "object": "global::A",
               "indices": ["i"],
-              "shape": [100],
-              "elem_size": 4,
               "op": "store"
             }
           ]
@@ -66,7 +64,7 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 | 필드 | 설명 |
 |---|---|
-| `schema_version` | LAT schema version. 현재 값은 `2` |
+| `schema_version` | APE/LAT schema version. 현재 값은 `2` |
 | `metadata` | access node가 참조하는 object와 structure layout metadata |
 | `functions` | 분석된 함수 wrapper 배열 |
 
@@ -108,7 +106,7 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 |-----------|-----------|------|
 | Function wrapper | `function`, `params`, `annotations`, `body` | 함수 이름·파라미터·본문 |
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
-| `Array` | `name`, `object`, `indices`, `op`, `shape`, `elem_size` | 배열 접근. `object`는 `metadata.objects` key |
+| `Array` | `name`, `object`, `indices`, `op` | 배열 접근. 배열 shape/elem_size는 `object`로 `metadata.objects`에서 조회 |
 | `Scalar` | `name`, `op` | 스칼라 접근 |
 | `Call` | `callee`, `args`, `arg_objects` | `yard.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
 
@@ -164,12 +162,24 @@ cmake --build build
 
 ## 사용법
 
+간단한 실행은 repo root의 `main.py`를 사용합니다.
+
+```bash
+python3 main.py tasks/test_call.c
+```
+
+`.c` 입력은 `clang-14`로 `<name>_g.ll`을 만든 뒤 pass를 실행하고,
+현재 디렉토리에 `<name>_g_ape.json`을 생성합니다. `.ll` 입력은 컴파일 없이
+바로 pass에 전달합니다.
+
+수동으로 실행하려면 다음과 같이 `clang-14`와 `opt-14`를 호출합니다.
+
 ```bash
 # 1. C 소스 → LLVM IR
 clang-14 -O0 -Xclang -disable-O0-optnone -g \
          -emit-llvm -S -o <name>_g.ll <name>.c
 
-# 2. Pass 실행 → LAT JSON 생성
+# 2. Pass 실행 → APE JSON 생성
 opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
        -passes=function\(mem2reg\),loop-simplify,loop-annotated-trace \
        <name>_g.ll -o /dev/null
@@ -187,6 +197,32 @@ opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
 - `YARD_ANALYZE` — 분석 root 함수. 어노테이션이 없으면 모든 함수를 분석합니다.
 - `YARD_INLINE` — call site에 LAT 노드로 보존할 helper 함수.
 
+캐시/주소 계산 downstream에서는 실제 storage object의 full shape가 필요합니다.
+C 함수 파라미터의 배열 표기는 LLVM IR에서 pointer-to-row 형태로 decay되어
+outer dimension이 사라질 수 있으므로, fixture와 benchmark는 다음 구조를
+권장합니다.
+
+```c
+float A[32][64], B[64][32], C[32][32];
+
+YARD_INLINE
+void matmul_params(float A[32][64], float B[64][32], float C[32][32])
+{
+  /* loop body */
+}
+
+YARD_ANALYZE
+void matmul_params_kernel(void)
+{
+  matmul_params(A, B, C);
+}
+```
+
+즉 `YARD_ANALYZE` root는 실제 global/local object를 call site에서 드러내고,
+계산 본문은 `YARD_INLINE` helper로 둡니다. 이때 `Call.arg_objects`에는
+`global::A` 같은 actual object id가 기록되어 downstream이 callee parameter를
+실제 object metadata에 binding할 수 있습니다.
+
 ---
 
 ## 테스트
@@ -202,7 +238,9 @@ ctest --test-dir build
 | `ScalarAccess` | 스칼라 접근 생성 및 JSON 직렬화 |
 | `ArrayAccess` | 배열 접근 생성·op 필드·상수 인덱스 |
 | `LoopNest` | 루프 트리 구성 및 중첩 JSON 직렬화 |
-| `CallStmt` | 함수 호출 노드 생성 및 JSON 직렬화 |
+| `CallStmt` | 함수 호출 노드 생성 및 `arg_objects` JSON 직렬화 |
+| `AccessBuilder` | load/store/call statement 생성 및 call argument object 추출 |
+| `AccessMetadataBuilder` | `metadata.objects`, `metadata.structs` 생성 |
 | `GetBaseName` | 무명 변수 IR 슬롯 번호 구분 |
 | `GetValueName` | 함수 파라미터·call argument 이름 추출 |
 | `GetIndexVars` | 전역/파라미터 배열 GEP chain 다차원 index 보존 |
@@ -214,18 +252,28 @@ ctest --test-dir build
 ## 프로젝트 구조
 
 ```
+main.py                     # C/LLVM IR → _ape.json pipeline entrypoint
 include/
-├── AccessBuilder.hpp     # 명령어 → Statement 변환 인터페이스
-├── ArrayMetadata.hpp     # 배열 shape / element size metadata
-├── Statement.hpp         # AST 노드 (ScalarAccess, ArrayAccess, LoopNest, CallStmt)
-├── JsonExportVisitor.hpp # Visitor: AST → llvm::json::Value
-└── IrHelpers.hpp         # IR 쿼리 헬퍼 선언
+├── AccessBuilder.hpp        # 명령어 → Statement 변환 인터페이스
+├── AccessMetadata.hpp       # object / struct metadata model
+├── AccessMetadataBuilder.hpp # module metadata 생성 인터페이스
+├── AccessTypeInfo.hpp       # LLVM/source type → access type 정보
+├── ArrayMetadata.hpp        # 배열 shape / element size metadata
+├── Statement.hpp            # AST 노드
+├── JsonExportVisitor.hpp    # Visitor: AST → llvm::json::Value
+└── IrHelpers.hpp            # IR 쿼리 헬퍼 선언
 src/
-├── AccessBuilder.cpp     # Load/Store/Call → Statement 변환 (op 필드 포함)
-├── ArrayMetadata.cpp     # GEP source type → ArrayMetadata 추출
-├── IrHelpers.cpp         # buildDebugNameMap, getIndexVars, getBaseName 등
-└── LoopAnalysisPass.cpp  # LLVM Pass 진입점: buildRootStatements → LAT JSON 출력
+├── AccessBuilder.cpp        # Load/Store/Call → Statement 변환
+├── AccessMetadata.cpp       # metadata JSON 직렬화
+├── AccessMetadataBuilder.cpp # globals/functions/struct metadata 수집
+├── AccessTypeInfo.cpp       # type 정보 추출 구현
+├── ArrayMetadata.cpp        # GEP source type → ArrayMetadata 추출
+├── IrHelpers.cpp            # buildDebugNameMap, getIndexVars 등
+└── LoopAnalysisPass.cpp     # LLVM Pass 진입점: _ape.json 출력
 tests/
+├── AccessBuilder_test.cpp
+├── AccessMetadataBuilder_test.cpp
+├── CallStmt_test.cpp
 ├── Statement_test.cpp
 ├── IrHelpers_test.cpp
 ├── IrHelpersGep_test.cpp
