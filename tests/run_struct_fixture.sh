@@ -18,7 +18,7 @@ opt-14 -load-pass-plugin "$plugin" \
   -passes='function(mem2reg),loop-simplify,loop-annotated-trace' \
   test_struct_g.ll -o /dev/null
 
-json=test_struct_g_lat.json
+json=test_struct_g_ape.json
 
 grep -q '"schema_version":2' "$json"
 grep -q '"name":"o.items.x"' "$json"

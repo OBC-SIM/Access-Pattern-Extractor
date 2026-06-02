@@ -209,7 +209,7 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass> {
         }
 
         llvm::StringRef stem = llvm::sys::path::stem(M.getModuleIdentifier());
-        std::string filename = stem.str() + "_lat.json";
+        std::string filename = stem.str() + "_ape.json";
         std::error_code EC;
         raw_fd_ostream OS(filename, EC, sys::fs::OF_Text);
         if (EC) {

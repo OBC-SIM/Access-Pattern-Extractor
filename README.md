@@ -8,7 +8,7 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 ## 출력 형식
 
-`<name>_g_lat.json` — LAT v2 JSON.
+`<name>_g_ape.json` — APE/LAT v2 JSON.
 
 > **Breaking change:** v2부터 JSON root는 function 배열이 아니라
 > `schema_version`, `metadata`, `functions`를 갖는 object입니다.
@@ -175,7 +175,7 @@ opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
        <name>_g.ll -o /dev/null
 ```
 
-현재 디렉토리에 `<name>_g_lat.json`이 생성됩니다.
+현재 디렉토리에 `<name>_g_ape.json`이 생성됩니다.
 
 ### 어노테이션
 
