@@ -33,6 +33,8 @@ static std::string objectName(Value* Base, const NameMap& names) {
         return it->second;
     if (Base->hasName())
         return Base->getName().str();
+    if (auto* Arg = dyn_cast<Argument>(Base))
+        return "arg" + std::to_string(Arg->getArgNo());
     return "tmp";
 }
 
@@ -67,8 +69,6 @@ static void collectFunctionObjects(Module& M, AccessMetadata& metadata) {
         NameMap names = buildDebugNameMap(F);
         for (Argument& Arg : F.args()) {
             std::string name = objectName(&Arg, names);
-            if (name == "tmp")
-                name = "arg" + std::to_string(Arg.getArgNo());
             std::string id = "function:" + F.getName().str() + "::param:" + name;
             std::string scope = "function:" + F.getName().str();
             metadata.objects[id] = makeObject(id, name, scope, "param", Arg.getType(), DL);

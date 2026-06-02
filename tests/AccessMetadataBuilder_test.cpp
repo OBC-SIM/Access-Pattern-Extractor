@@ -107,6 +107,26 @@ TEST(AccessMetadataBuilder, DistinguishesObjectIdsByScope) {
     EXPECT_EQ(getObjectId(Local, *F, names), "function:foo::local:A");
 }
 
+TEST(AccessMetadataBuilder, UsesArgFallbackForUnnamedParamObjectIds) {
+    LLVMContext Ctx;
+    Module M("metadata", Ctx);
+    IRBuilder<> Builder(Ctx);
+    auto* I32 = Type::getInt32Ty(Ctx);
+    auto* FT = FunctionType::get(Type::getVoidTy(Ctx), {PointerType::getUnqual(I32)}, false);
+    Function* F = Function::Create(FT, Function::ExternalLinkage, "foo", &M);
+    BasicBlock* BB = BasicBlock::Create(Ctx, "entry", F);
+    Builder.SetInsertPoint(BB);
+    Builder.CreateRetVoid();
+
+    NameMap names;
+    AccessMetadata metadata = buildAccessMetadata(M);
+
+    auto param = metadata.objects.find("function:foo::param:arg0");
+    ASSERT_NE(param, metadata.objects.end());
+    EXPECT_EQ(param->second.name, "arg0");
+    EXPECT_EQ(getObjectId(&*F->arg_begin(), *F, names), "function:foo::param:arg0");
+}
+
 TEST(AccessMetadataJson, EmitsParseableObjectTypeInfo) {
     ObjectMetadata object;
     object.id = "global::A";
