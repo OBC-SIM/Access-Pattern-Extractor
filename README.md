@@ -110,7 +110,20 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
 | `Array` | `name`, `object`, `indices`, `op`, `shape`, `elem_size` | 배열 접근. `object`는 `metadata.objects` key |
 | `Scalar` | `name`, `op` | 스칼라 접근 |
-| `Call` | `callee`, `args` | `yard.inline` 함수 호출 |
+| `Call` | `callee`, `args`, `arg_objects` | `yard.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
+
+`Call.arg_objects`의 각 원소는 먼저 `metadata.objects` key로 해석합니다. key가
+있으면 callee parameter access를 actual storage object로 치환할 수 있고,
+없으면 loop induction variable이나 scalar value 같은 일반 ref로 취급합니다.
+
+```json
+{
+  "type": "Call",
+  "callee": "helper",
+  "args": ["A", "i"],
+  "arg_objects": ["global::A", "i"]
+}
+```
 
 구조체 access는 깊은 path 배열 대신 얕은 표시 이름을 사용합니다.
 
