@@ -10,11 +10,19 @@ struct Outer {
   struct S items[4];
 };
 
-YARD_ANALYZE
+struct Outer o;
+
+YARD_INLINE
 void struct_field_access(struct Outer *o)
 {
   for (int i = 0; i < 4; i++) {
     o->items[i].x = i;
     o->items[i].y = (double)i;
   }
+}
+
+YARD_ANALYZE
+void struct_field_access_kernel(void)
+{
+  struct_field_access(&o);
 }
