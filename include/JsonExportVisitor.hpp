@@ -38,15 +38,6 @@ public:
         };
         if (!node.getObjectId().empty())
             obj["object"] = node.getObjectId();
-        const auto& metadata = node.getMetadata();
-        if (!metadata.shape.empty()) {
-            llvm::json::Array shape;
-            for (int64_t dim : metadata.shape)
-                shape.push_back(dim);
-            obj["shape"] = std::move(shape);
-        }
-        if (metadata.elem_size > 0)
-            obj["elem_size"] = metadata.elem_size;
         if (!node.getOp().empty())
             obj["op"] = node.getOp();
         Result_ = std::move(obj);
