@@ -21,10 +21,12 @@ opt-14 -load-pass-plugin "$plugin" \
 json=test_struct_g_ape.json
 
 grep -q '"schema_version":2' "$json"
-grep -q '"name":"o.items.x"' "$json"
-grep -q '"name":"o.items.y"' "$json"
+grep -q '"name":"o.items\[i\].x"' "$json"
+grep -q '"name":"o.items\[i\].y"' "$json"
 grep -q '"object":"function:struct_field_access::param:o"' "$json"
 grep -q '"indices":\["i"\]' "$json"
+grep -q '"access_path":\[{"index":1,"kind":"field","name":"items"},{"kind":"index","value":"i"},{"index":0,"kind":"field","name":"x"}\]' "$json"
+grep -q '"access_path":\[{"index":1,"kind":"field","name":"items"},{"kind":"index","value":"i"},{"index":1,"kind":"field","name":"y"}\]' "$json"
 grep -q '"Outer"' "$json"
 grep -q '"S"' "$json"
 grep -q '"name":"items"' "$json"

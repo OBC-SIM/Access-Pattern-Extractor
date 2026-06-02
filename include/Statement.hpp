@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "AccessPath.hpp"
 #include "ArrayMetadata.hpp"
 
 namespace lat {
@@ -74,13 +75,18 @@ public:
     const ArrayMetadata& getMetadata()              const { return metadata_; }
     const std::string& getOp()                      const { return op_; }
     const std::string& getObjectId()                const { return object_id_; }
+    const std::vector<AccessPathSegment>& getAccessPath() const { return access_path_; }
     void setObjectId(std::string id) { object_id_ = std::move(id); }
+    void setAccessPath(std::vector<AccessPathSegment> path) {
+        access_path_ = std::move(path);
+    }
 private:
     std::string              array_name_;
     std::vector<std::string> index_vars_;
     ArrayMetadata            metadata_;
     std::string              op_;
     std::string              object_id_;
+    std::vector<AccessPathSegment> access_path_;
 };
 
 // ── CallStmt: 단말 노드 ───────────────────────────────────

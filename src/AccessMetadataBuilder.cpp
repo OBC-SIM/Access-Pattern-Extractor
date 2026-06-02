@@ -16,10 +16,6 @@ using namespace llvm;
 namespace lat {
 namespace {
 
-static std::string structName(StructType* Ty) {
-    return Ty->hasName() ? cleanStructName(Ty->getName()) : "";
-}
-
 static Value* baseObject(Value* Ptr) {
     Value* Base = Ptr->stripPointerCasts();
     while (auto* GEP = dyn_cast<GEPOperator>(Base))
@@ -167,46 +163,6 @@ static void applyDebugFieldNames(Module& M, AccessMetadata& metadata) {
             visitDebugType(dyn_cast_or_null<DIType>(Node), metadata);
 }
 
-static std::string fieldName(StructType* Ty, uint64_t index,
-                             const AccessMetadata& metadata) {
-    auto it = metadata.structs.find(structName(Ty));
-    if (it == metadata.structs.end() || index >= it->second.fields.size())
-        return "field_" + std::to_string(index);
-    return it->second.fields[index].name;
-}
-
-static void appendResolvedIndex(Value* Idx, ScalarEvolution& SE,
-                                const NameMap& names,
-                                std::vector<std::string>& out) {
-    auto resolved = resolveIndex(Idx, SE, names);
-    out.insert(out.end(), resolved.begin(), resolved.end());
-}
-
-static Type* consumeGepIndex(Type* Ty, Value* Idx, ScalarEvolution& SE,
-                             const NameMap& names, const AccessMetadata& metadata,
-                             std::string& name, std::vector<std::string>& indices) {
-    if (auto* StructTy = dyn_cast<StructType>(Ty)) {
-        if (auto* C = dyn_cast<ConstantInt>(Idx)) {
-            uint64_t field = C->getZExtValue();
-            name += "." + fieldName(StructTy, field, metadata);
-            return StructTy->getElementType(static_cast<unsigned>(field));
-        }
-        return Ty;
-    }
-    if (auto* ArrayTy = dyn_cast<ArrayType>(Ty)) {
-        appendResolvedIndex(Idx, SE, names, indices);
-        return ArrayTy->getElementType();
-    }
-    appendResolvedIndex(Idx, SE, names, indices);
-    return Ty;
-}
-
-static void collectGepChain(GEPOperator* GEP, std::vector<GEPOperator*>& chain) {
-    if (auto* Parent = dyn_cast<GEPOperator>(GEP->getPointerOperand()->stripPointerCasts()))
-        collectGepChain(Parent, chain);
-    chain.push_back(GEP);
-}
-
 }  // namespace
 
 AccessMetadata buildAccessMetadata(Module& M) {
@@ -235,30 +191,6 @@ std::string getObjectId(Value* Ptr, const Function& Current, const NameMap& name
     if (isa<AllocaInst>(Base))
         return "function:" + Current.getName().str() + "::local:" + name;
     return "function:" + Current.getName().str() + "::temp:" + name;
-}
-
-std::pair<std::string, std::vector<std::string>> describeGepAccess(
-    GEPOperator* GEP,
-    ScalarEvolution& SE,
-    const NameMap& names,
-    const AccessMetadata& metadata) {
-    std::vector<GEPOperator*> chain;
-    collectGepChain(GEP, chain);
-
-    Value* base = baseObject(GEP->getPointerOperand());
-    std::string name = objectName(base, names);
-    std::vector<std::string> indices;
-
-    for (GEPOperator* Current : chain) {
-        Type* Ty = Current->getSourceElementType();
-        auto it = Current->idx_begin();
-        if (Current->getNumIndices() > 1 && isa<ConstantInt>(*it) &&
-            cast<ConstantInt>(*it)->isZero())
-            ++it;
-        for (; it != Current->idx_end(); ++it)
-            Ty = consumeGepIndex(Ty, *it, SE, names, metadata, name, indices);
-    }
-    return {name, indices};
 }
 
 }  // namespace lat

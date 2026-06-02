@@ -1,12 +1,8 @@
 #pragma once
 
-#include <utility>
 #include <string>
-#include <vector>
 
-#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/Operator.h"
 #include "llvm/IR/Value.h"
 
 #include "AccessMetadata.hpp"
@@ -38,23 +34,5 @@ AccessMetadata buildAccessMetadata(llvm::Module& M);
  */
 std::string getObjectId(llvm::Value* Ptr, const llvm::Function& Current,
                         const NameMap& names);
-
-/**
- * @brief GEP 접근을 구조체 필드명과 배열 인덱스로 나눈 표시 정보를 만든다.
- *
- * 반환되는 name은 `o.items.x`처럼 얕은 display name이며, indices에는 배열
- * 차원의 인덱스만 들어간다. 구조체 field index는 metadata로 해석한다.
- *
- * @param GEP      분석할 GEP
- * @param SE       ScalarEvolution 분석 결과
- * @param names    debug name map
- * @param metadata root metadata
- * @return display name과 배열 index 목록
- */
-std::pair<std::string, std::vector<std::string>> describeGepAccess(
-    llvm::GEPOperator* GEP,
-    llvm::ScalarEvolution& SE,
-    const NameMap& names,
-    const AccessMetadata& metadata);
 
 }  // namespace lat

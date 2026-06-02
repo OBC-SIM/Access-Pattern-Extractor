@@ -38,6 +38,8 @@ public:
         };
         if (!node.getObjectId().empty())
             obj["object"] = node.getObjectId();
+        if (!node.getAccessPath().empty())
+            obj["access_path"] = accessPathJson(node.getAccessPath());
         if (!node.getOp().empty())
             obj["op"] = node.getOp();
         Result_ = std::move(obj);
@@ -75,6 +77,22 @@ public:
     }
 
 private:
+    static llvm::json::Array accessPathJson(
+        const std::vector<AccessPathSegment>& path) {
+        llvm::json::Array result;
+        for (const auto& segment : path) {
+            llvm::json::Object obj{{"kind", segment.kind}};
+            if (segment.kind == "field") {
+                obj["name"] = segment.name;
+                obj["index"] = segment.index;
+            } else if (segment.kind == "index") {
+                obj["value"] = segment.value;
+            }
+            result.push_back(std::move(obj));
+        }
+        return result;
+    }
+
     llvm::json::Value Result_ = nullptr;
 };
 

@@ -108,6 +108,31 @@ TEST(ArrayAccess, JsonObjectFieldWhenPresent) {
     EXPECT_EQ(str(obj->getString("object")), "global::arr");
 }
 
+TEST(ArrayAccess, JsonAccessPathWhenPresent) {
+    ArrayAccess a("o.items[i].x", {"i"});
+    a.setAccessPath({
+        AccessPathSegment{"field", "items", 1, ""},
+        AccessPathSegment{"index", "", -1, "i"},
+        AccessPathSegment{"field", "x", 0, ""}
+    });
+    JsonExportVisitor vis;
+    a.accept(vis);
+    auto* obj = toObj(vis.getResult());
+    ASSERT_NE(obj, nullptr);
+    auto* path = obj->getArray("access_path");
+    ASSERT_NE(path, nullptr);
+    ASSERT_EQ(path->size(), 3u);
+    auto* field = (*path)[0].getAsObject();
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(str(field->getString("kind")), "field");
+    EXPECT_EQ(str(field->getString("name")), "items");
+    EXPECT_EQ(i64(field->getInteger("index")), 1);
+    auto* index = (*path)[1].getAsObject();
+    ASSERT_NE(index, nullptr);
+    EXPECT_EQ(str(index->getString("kind")), "index");
+    EXPECT_EQ(str(index->getString("value")), "i");
+}
+
 TEST(ArrayAccess, JsonOneDimensional) {
     ArrayAccess a("vec", {"k"});
     JsonExportVisitor vis;

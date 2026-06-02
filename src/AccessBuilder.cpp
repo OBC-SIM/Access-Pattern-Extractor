@@ -4,6 +4,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Operator.h"
 
+#include "../include/AccessPath.hpp"
 #include "../include/AccessMetadataBuilder.hpp"
 
 using namespace llvm;
@@ -61,8 +62,8 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     std::string op) {
     if (auto* GEP = dyn_cast<GEPOperator>(ptr)) {
         auto desc = describeGepAccess(GEP, SE, names, metadata);
-        std::string base = desc.first;
-        auto indices = std::move(desc.second);
+        std::string base = std::move(desc.name);
+        auto indices = std::move(desc.indices);
         if (indices.empty())
             return std::make_unique<ScalarAccess>(base, std::move(op));
         auto access = std::make_unique<ArrayAccess>(
@@ -71,6 +72,7 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
             getArrayMetadata(GEP, I.getModule()->getDataLayout()),
             std::move(op));
         access->setObjectId(getObjectId(GEP->getPointerOperand(), current, names));
+        access->setAccessPath(std::move(desc.access_path));
         return access;
     }
 
