@@ -45,12 +45,15 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     enable_testing()
     add_executable(LoopAnnotatedTraceTests
         tests/Statement_test.cpp
+        tests/CallStmt_test.cpp
+        tests/AccessBuilder_test.cpp
         tests/AccessMetadataBuilder_test.cpp
         tests/IrHelpers_test.cpp
         tests/IrHelpersGep_test.cpp
         tests/ArrayMetadata_test.cpp
         src/AccessMetadata.cpp
         src/AccessMetadataBuilder.cpp
+        src/AccessBuilder.cpp
         src/AccessTypeInfo.cpp
         src/ArrayMetadata.cpp
         src/IrHelpers.cpp

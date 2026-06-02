@@ -56,10 +56,14 @@ public:
         llvm::json::Array args;
         for (const auto& arg : node.getArgs())
             args.push_back(arg);
+        llvm::json::Array argObjects;
+        for (const auto& arg : node.getArgObjects())
+            argObjects.push_back(arg);
         Result_ = llvm::json::Object{
-            {"type",   "Call"},
-            {"callee", node.getCallee()},
-            {"args",   std::move(args)}
+            {"type",        "Call"},
+            {"callee",      node.getCallee()},
+            {"args",        std::move(args)},
+            {"arg_objects", std::move(argObjects)}
         };
     }
 

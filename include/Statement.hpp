@@ -88,18 +88,23 @@ private:
  * @brief 직접 함수 호출 위치를 나타낸다.
  *
  * @param callee 호출 대상 함수 이름
- * @param args   호출 인자 이름 목록
+ * @param args        호출 인자 이름 목록
+ * @param arg_objects 호출 인자의 object/ref 식별자 목록
  */
 class CallStmt : public Statement {
 public:
-    CallStmt(std::string callee, std::vector<std::string> args)
-        : callee_(std::move(callee)), args_(std::move(args)) {}
+    CallStmt(std::string callee, std::vector<std::string> args,
+             std::vector<std::string> arg_objects = {})
+        : callee_(std::move(callee)), args_(std::move(args)),
+          arg_objects_(std::move(arg_objects)) {}
     void accept(Visitor& v) override { v.visit(*this); }
     const std::string& getCallee() const { return callee_; }
     const std::vector<std::string>& getArgs() const { return args_; }
+    const std::vector<std::string>& getArgObjects() const { return arg_objects_; }
 private:
     std::string callee_;
     std::vector<std::string> args_;
+    std::vector<std::string> arg_objects_;
 };
 
 // ── LoopNest: 내부 노드 ────────────────────────────────────

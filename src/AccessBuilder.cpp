@@ -1,6 +1,7 @@
 #include "../include/AccessBuilder.hpp"
 
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Operator.h"
 
 #include "../include/AccessMetadataBuilder.hpp"
@@ -8,6 +9,13 @@
 using namespace llvm;
 
 namespace lat {
+
+static bool isStorageObject(Value* V) {
+    if (!V->getType()->isPointerTy())
+        return false;
+    Value* Base = V->stripPointerCasts();
+    return isa<Argument>(Base) || isa<GlobalVariable>(Base) || isa<AllocaInst>(Base);
+}
 
 static std::unique_ptr<Statement> makeInlineCall(
     CallBase& Call,
@@ -19,9 +27,16 @@ static std::unique_ptr<Statement> makeInlineCall(
         return nullptr;
 
     std::vector<std::string> args;
-    for (Value* Arg : Call.args())
+    std::vector<std::string> argObjects;
+    for (Value* Arg : Call.args()) {
         args.push_back(getValueName(Arg, names));
-    return std::make_unique<CallStmt>(Callee->getName().str(), args);
+        if (isStorageObject(Arg))
+            argObjects.push_back(getObjectId(Arg, current, names));
+        else
+            argObjects.push_back(getValueName(Arg, names));
+    }
+    return std::make_unique<CallStmt>(
+        Callee->getName().str(), args, std::move(argObjects));
 }
 
 static Value* loadStorePointer(Instruction& I, std::string& op) {
