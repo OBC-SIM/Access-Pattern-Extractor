@@ -3,4 +3,4 @@ system-prompt-extraction/
 tasks/*.json
 tasks/*.ll
 .cache/
-
+__pycache__/
