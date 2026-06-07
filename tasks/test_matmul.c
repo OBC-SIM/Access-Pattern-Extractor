@@ -1,8 +1,8 @@
 #include "yard_analyze.h"
 
-#define M 32
-#define N 32
-#define K 64
+#define M 16
+#define N 256
+#define K 128
 
 float A[M][K], B[K][N], C[M][N];
 
