@@ -229,7 +229,7 @@ TEST(FunctionAnnotation, DetectsClangAnnotateAttributeShape) {
     auto* I32 = Type::getInt32Ty(Ctx);
     auto* I8Ptr = Type::getInt8PtrTy(Ctx);
     auto* EntryTy = StructType::get(I8Ptr, I8Ptr, I8Ptr, I32);
-    auto* StrGV = makeAnnotationString(M, "yard.analyze", ".str");
+    auto* StrGV = makeAnnotationString(M, "ape.analyze", ".str");
     auto* Entry = annotationEntry(M, Marked, StrGV, EntryTy);
     auto* ArrayTy = ArrayType::get(EntryTy, 1);
     std::vector<Constant*> Entries{Entry};
@@ -237,9 +237,9 @@ TEST(FunctionAnnotation, DetectsClangAnnotateAttributeShape) {
         M, ArrayTy, false, GlobalValue::AppendingLinkage,
         ConstantArray::get(ArrayTy, Entries), "llvm.global.annotations");
 
-    EXPECT_TRUE(hasFunctionAnnotation(*Marked, "yard.analyze"));
+    EXPECT_TRUE(hasFunctionAnnotation(*Marked, "ape.analyze"));
     EXPECT_FALSE(hasFunctionAnnotation(*Marked, "other"));
-    EXPECT_FALSE(hasFunctionAnnotation(*Plain, "yard.analyze"));
+    EXPECT_FALSE(hasFunctionAnnotation(*Plain, "ape.analyze"));
 }
 
 TEST(FunctionAnnotation, DetectsInlineAnnotationSeparately) {
@@ -254,7 +254,7 @@ TEST(FunctionAnnotation, DetectsInlineAnnotationSeparately) {
     auto* I32 = Type::getInt32Ty(Ctx);
     auto* I8Ptr = Type::getInt8PtrTy(Ctx);
     auto* EntryTy = StructType::get(I8Ptr, I8Ptr, I8Ptr, I32);
-    auto* InlineStr = makeAnnotationString(M, "yard.inline", ".str.inline");
+    auto* InlineStr = makeAnnotationString(M, "ape.inline", ".str.inline");
     auto* Entry = annotationEntry(M, Helper, InlineStr, EntryTy);
     auto* ArrayTy = ArrayType::get(EntryTy, 1);
     std::vector<Constant*> Entries{Entry};
@@ -262,6 +262,6 @@ TEST(FunctionAnnotation, DetectsInlineAnnotationSeparately) {
         M, ArrayTy, false, GlobalValue::AppendingLinkage,
         ConstantArray::get(ArrayTy, Entries), "llvm.global.annotations");
 
-    EXPECT_TRUE(hasFunctionAnnotation(*Helper, "yard.inline"));
-    EXPECT_FALSE(hasFunctionAnnotation(*Helper, "yard.analyze"));
+    EXPECT_TRUE(hasFunctionAnnotation(*Helper, "ape.inline"));
+    EXPECT_FALSE(hasFunctionAnnotation(*Helper, "ape.analyze"));
 }

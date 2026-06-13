@@ -9,12 +9,9 @@ void loop_2d(int A[64][64])
 {
   for (int i = 0; i < 64; i++)
   {
-    for (int j = 0; j < 64; j++) A[i][j] = i + j;
+    for (int j = 0; j < 64; j++) A[i][j] += i + j;
   }
 }
 
 YARD_ANALYZE
-void loop_2d_kernel(void)
-{
-  loop_2d(A);
-}
+void loop_2d_kernel(void) { loop_2d(A); }

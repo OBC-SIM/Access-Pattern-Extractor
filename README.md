@@ -2,7 +2,7 @@
 
 LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하는 LLVM Pass 플러그인입니다.
 
-[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `yard.analyze` / `yard.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/LAT v2 JSON을 출력합니다.
+[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `ape.analyze` / `ape.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/LAT v2 JSON을 출력합니다.
 
 ---
 
@@ -36,7 +36,7 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
     {
       "function": "test_constatnt_variable",
       "params": [],
-      "annotations": ["yard.analyze"],
+      "annotations": ["ape.analyze"],
       "body": [
         {
           "type": "Loop",
@@ -108,7 +108,7 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
 | `Array` | `name`, `object`, `indices`, `access_path`, `op` | 배열 접근. 배열 shape/elem_size는 `object`로 `metadata.objects`에서 조회 |
 | `Scalar` | `name`, `op` | 스칼라 접근 |
-| `Call` | `callee`, `args`, `arg_objects` | `yard.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
+| `Call` | `callee`, `args`, `arg_objects` | `ape.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
 
 `Call.arg_objects`의 각 원소는 먼저 `metadata.objects` key로 해석합니다. key가
 있으면 callee parameter access를 actual storage object로 치환할 수 있고,
@@ -211,12 +211,13 @@ opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
 ### 어노테이션
 
 ```c
-#define YARD_ANALYZE __attribute__((annotate("yard.analyze")))
-#define YARD_INLINE  __attribute__((annotate("yard.inline")))
+#include "ape_analyze.h"
 ```
 
-- `YARD_ANALYZE` — 분석 root 함수. 어노테이션이 없으면 모든 함수를 분석합니다.
-- `YARD_INLINE` — call site에 LAT 노드로 보존할 helper 함수.
+- `APE_ANALYZE` — 분석 root 함수. 어노테이션이 없으면 모든 함수를 분석합니다.
+- `APE_INLINE` — call site에 LAT 노드로 보존할 helper 함수.
+- `yard_analyze.h`의 `YARD_ANALYZE` / `YARD_INLINE`은 기존 fixture 호환을
+  위해 같은 annotation으로 유지됩니다.
 
 캐시/주소 계산 downstream에서는 실제 storage object의 full shape가 필요합니다.
 C 함수 파라미터의 배열 표기는 LLVM IR에서 pointer-to-row 형태로 decay되어
@@ -226,21 +227,21 @@ outer dimension이 사라질 수 있으므로, fixture와 benchmark는 다음 �
 ```c
 float A[32][64], B[64][32], C[32][32];
 
-YARD_INLINE
+APE_INLINE
 void matmul_params(float A[32][64], float B[64][32], float C[32][32])
 {
   /* loop body */
 }
 
-YARD_ANALYZE
+APE_ANALYZE
 void matmul_params_kernel(void)
 {
   matmul_params(A, B, C);
 }
 ```
 
-즉 `YARD_ANALYZE` root는 실제 global/local object를 call site에서 드러내고,
-계산 본문은 `YARD_INLINE` helper로 둡니다. 이때 `Call.arg_objects`에는
+즉 `APE_ANALYZE` root는 실제 global/local object를 call site에서 드러내고,
+계산 본문은 `APE_INLINE` helper로 둡니다. 이때 `Call.arg_objects`에는
 `global::A` 같은 actual object id가 기록되어 downstream이 callee parameter를
 실제 object metadata에 binding할 수 있습니다.
 
@@ -266,7 +267,7 @@ ctest --test-dir build
 | `GetBaseName` | 무명 변수 IR 슬롯 번호 구분 |
 | `GetValueName` | 함수 파라미터·call argument 이름 추출 |
 | `GetIndexVars` | 전역/파라미터 배열 GEP chain 다차원 index 보존 |
-| `FunctionAnnotation` | `yard.analyze` / `yard.inline` annotation 감지 |
+| `FunctionAnnotation` | `ape.analyze` / `ape.inline` annotation 감지 |
 | `StructFixtureTrace` | 구조체 fixture의 실제 pass 출력 검증 |
 
 ---

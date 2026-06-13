@@ -41,8 +41,8 @@ using lat::makeAccessFromInstr;
 
 namespace {
 
-constexpr llvm::StringLiteral AnalyzeAnnotation = "yard.analyze";
-constexpr llvm::StringLiteral InlineAnnotation = "yard.inline";
+constexpr llvm::StringLiteral AnalyzeAnnotation = "ape.analyze";
+constexpr llvm::StringLiteral InlineAnnotation = "ape.inline";
 
 // ── 트리 빌더 ─────────────────────────────────────────────
 
