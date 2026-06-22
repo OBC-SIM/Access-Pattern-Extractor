@@ -8,9 +8,9 @@ Usage:
 
 Options:
     --plugin PATH          libLoopAnnotatedTrace.so 경로
-    --apex-cache PATH      apex-cache 실행 파일 경로
+    --casa PATH      casa 실행 파일 경로
     --cache PATH           cache.yaml 경로
-    --output DIR           APEX-Cache report 출력 디렉터리
+    --output DIR           CASA report 출력 디렉터리
     --ape-only             APE JSON 생성까지만 실행
 """
 
@@ -26,7 +26,7 @@ _PLUGIN_CANDIDATES = (
     _REPO_ROOT / "frontend" / "build" / "libLoopAnnotatedTrace.so",
     _REPO_ROOT / "build" / "libLoopAnnotatedTrace.so",
 )
-_DEFAULT_APEX_CACHE = _REPO_ROOT / "build" / "apex-cache"
+_DEFAULT_CASA = _REPO_ROOT / "build" / "casa"
 _DEFAULT_CACHE = _REPO_ROOT / "settings" / "cache.yaml"
 _DEFAULT_OUTPUT = _REPO_ROOT / "results"
 
@@ -110,12 +110,12 @@ def run_llvm_pass(ll_path: Path, plugin_path: Path) -> Path:
         f"opt-14 실행 후 JSON 출력이 생성되지 않았습니다: {out_json}")
 
 
-def run_apex_cache(json_path: Path, apex_bin: Path, cache_yaml: Path,
+def run_casa(json_path: Path, casa_bin: Path, cache_yaml: Path,
                    output_dir: Path, verbose: bool = False,
                    no_color: bool = False) -> None:
-    """APE JSON을 APEX-Cache에 전달해 report를 생성한다."""
+    """APE JSON을 CASA에 전달해 report를 생성한다."""
     cmd = [
-        str(apex_bin.resolve()),
+        str(casa_bin.resolve()),
         "run",
         str(json_path.resolve()),
         "--cache",
@@ -132,7 +132,7 @@ def run_apex_cache(json_path: Path, apex_bin: Path, cache_yaml: Path,
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="C/LLVM IR → APE JSON → APEX-Cache reports"
+        description="C/LLVM IR → APE JSON → CASA reports"
     )
     parser.add_argument("files", nargs="+", metavar="FILE", help=".c 또는 .ll 파일")
     parser.add_argument(
@@ -142,10 +142,10 @@ def main() -> None:
         help="플러그인 .so 경로",
     )
     parser.add_argument(
-        "--apex-cache",
-        default=str(_DEFAULT_APEX_CACHE),
+        "--casa",
+        default=str(_DEFAULT_CASA),
         metavar="PATH",
-        help=f"apex-cache 실행 파일 경로 (기본값: {_DEFAULT_APEX_CACHE})",
+        help=f"casa 실행 파일 경로 (기본값: {_DEFAULT_CASA})",
     )
     parser.add_argument(
         "--cache",
@@ -157,7 +157,7 @@ def main() -> None:
         "--output",
         default=str(_DEFAULT_OUTPUT),
         metavar="DIR",
-        help=f"APEX-Cache report 출력 디렉터리 (기본값: {_DEFAULT_OUTPUT})",
+        help=f"CASA report 출력 디렉터리 (기본값: {_DEFAULT_OUTPUT})",
     )
     parser.add_argument(
         "--ape-only",
@@ -167,12 +167,12 @@ def main() -> None:
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="apex-cache run --verbose 전달",
+        help="casa run --verbose 전달",
     )
     parser.add_argument(
         "--no-color",
         action="store_true",
-        help="apex-cache run --no-color 전달",
+        help="casa run --no-color 전달",
     )
     args = parser.parse_args()
 
@@ -181,14 +181,14 @@ def main() -> None:
         print(f"오류: 플러그인을 찾을 수 없습니다: {plugin}", file=sys.stderr)
         print("  빌드 후 다시 시도하거나 --plugin 으로 경로를 지정하세요.", file=sys.stderr)
         sys.exit(1)
-    apex_bin = Path(args.apex_cache)
+    casa_bin = Path(args.casa)
     cache_yaml = Path(args.cache)
     output_dir = Path(args.output)
     if not args.ape_only:
-        if not apex_bin.exists():
-            print(f"오류: apex-cache 실행 파일을 찾을 수 없습니다: {apex_bin}",
+        if not casa_bin.exists():
+            print(f"오류: casa 실행 파일을 찾을 수 없습니다: {casa_bin}",
                   file=sys.stderr)
-            print("  APEX-Cache 빌드 후 다시 시도하거나 --apex-cache 를 지정하세요.",
+            print("  CASA 빌드 후 다시 시도하거나 --casa 를 지정하세요.",
                   file=sys.stderr)
             sys.exit(1)
         if not cache_yaml.exists():
@@ -211,8 +211,8 @@ def main() -> None:
             json_path = run_llvm_pass(ll_path, plugin)
             print(f"완료 → {json_path.name}", flush=True)
             if not args.ape_only:
-                print(f"  [3/{total_steps}] apex-cache 실행 중...", flush=True)
-                run_apex_cache(json_path, apex_bin, cache_yaml, output_dir,
+                print(f"  [3/{total_steps}] casa 실행 중...", flush=True)
+                run_casa(json_path, casa_bin, cache_yaml, output_dir,
                                args.verbose, args.no_color)
                 print(f"완료 → {output_dir.resolve()}")
         except subprocess.CalledProcessError as e:
