@@ -179,7 +179,7 @@ python3 main.py tasks/test_call.c
 현재 디렉토리에 `<name>_g_ape.json`을 생성합니다. `.ll` 입력은 컴파일 없이
 바로 pass에 전달합니다.
 
-APEX-Cache 저장소의 `frontend/main.py` wrapper는 C/LL 입력에서 APE JSON을 만든 뒤
+CASA 저장소의 `frontend/main.py` wrapper는 C/LL 입력에서 APE JSON을 만든 뒤
 바로 cache simulation report까지 생성할 수 있습니다.
 
 ```bash
