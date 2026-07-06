@@ -129,6 +129,29 @@ int64_t getLoopStart(Loop* L, ScalarEvolution& SE) {
     return 0;
 }
 
+int64_t getLoopStep(Loop* L, ScalarEvolution& SE) {
+    auto stepFromAddRec = [&](const SCEV* S) -> int64_t {
+        if (auto* AR = dyn_cast<SCEVAddRecExpr>(S)) {
+            if (auto* C = dyn_cast<SCEVConstant>(AR->getStepRecurrence(SE))) {
+                int64_t step = C->getValue()->getSExtValue();
+                return step == 0 ? 1 : step;
+            }
+        }
+        return 1;
+    };
+
+    if (PHINode* IV = L->getInductionVariable(SE))
+        return stepFromAddRec(SE.getSCEV(IV));
+    for (PHINode& PN : L->getHeader()->phis()) {
+        if (!SE.isSCEVable(PN.getType())) continue;
+        if (auto* AR = dyn_cast<SCEVAddRecExpr>(SE.getSCEV(&PN))) {
+            if (AR->getLoop() == L)
+                return stepFromAddRec(AR);
+        }
+    }
+    return 1;
+}
+
 void collectAddRecLoops(const SCEV* S, std::vector<const Loop*>& out) {
     if (auto* AR = dyn_cast<SCEVAddRecExpr>(S)) {
         out.push_back(AR->getLoop());
