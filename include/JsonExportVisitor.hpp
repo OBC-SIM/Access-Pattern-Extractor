@@ -71,6 +71,7 @@ public:
             {"var",   node.getInductionVar()},
             {"start", node.getStart()},
             {"bound", node.getBound()},
+            {"step",  node.getStep()},
             {"depth", static_cast<int64_t>(node.getDepth())},
             {"body",  std::move(body)}
         };

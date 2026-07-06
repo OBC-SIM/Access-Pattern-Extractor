@@ -35,6 +35,7 @@ using lat::buildDebugNameMap;
 using lat::getInductionVarName;
 using lat::getTripCount;
 using lat::getLoopStart;
+using lat::getLoopStep;
 using lat::getValueName;
 using lat::hasFunctionAnnotation;
 using lat::makeAccessFromInstr;
@@ -100,8 +101,9 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(Loop* L, ScalarEvolution& SE
                                                 const std::set<const Function*>& inlineFuncs,
                                                 const lat::AccessMetadata& metadata,
                                                 const Function& current) {
-    auto nest = std::make_unique<lat::LoopNest>(getInductionVarName(L, SE, names),
-                                           getLoopStart(L, SE), getTripCount(L, SE), depth);
+    auto nest = std::make_unique<lat::LoopNest>(
+        getInductionVarName(L, SE, names), getLoopStart(L, SE),
+        getTripCount(L, SE), depth, getLoopStep(L, SE));
     populateBody(L, SE, depth, *nest, names, inlineFuncs, metadata, current);
     return nest;
 }

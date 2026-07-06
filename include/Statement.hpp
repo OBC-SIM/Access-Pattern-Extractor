@@ -121,11 +121,14 @@ private:
  * @param start          루프 시작 값 (컴파일 타임 상수)
  * @param bound          루프 종료 값 (exclusive, 컴파일 타임 상수)
  * @param depth          루프 중첩 깊이 (1-based)
+ * @param step           루프 유도 변수 증가 폭 (컴파일 타임 상수)
  */
 class LoopNest : public Statement {
 public:
-    LoopNest(std::string induction_var, int64_t start, int64_t bound, unsigned depth)
-        : induction_var_(std::move(induction_var)), start_(start), bound_(bound), depth_(depth) {}
+    LoopNest(std::string induction_var, int64_t start, int64_t bound,
+             unsigned depth, int64_t step = 1)
+        : induction_var_(std::move(induction_var)), start_(start), bound_(bound),
+          step_(step == 0 ? 1 : step), depth_(depth) {}
 
     void accept(Visitor& v) override { v.visit(*this); }
 
@@ -140,6 +143,7 @@ public:
     const std::string&                             getInductionVar() const { return induction_var_; }
     int64_t                                        getStart()        const { return start_; }
     int64_t                                        getBound()        const { return bound_; }
+    int64_t                                        getStep()         const { return step_; }
     unsigned                                       getDepth()        const { return depth_; }
     const std::vector<std::unique_ptr<Statement>>& getBody()         const { return body_; }
 
@@ -147,6 +151,7 @@ private:
     std::string                            induction_var_;
     int64_t                                start_;
     int64_t                                bound_;
+    int64_t                                step_;
     unsigned                               depth_;
     std::vector<std::unique_ptr<Statement>> body_;
 };
