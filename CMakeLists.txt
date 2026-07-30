@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(LoopAnnotatedTrace LANGUAGES C CXX)
 
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 14 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "LLVM_DIR: ${LLVM_DIR}")
 
@@ -23,7 +23,9 @@ add_library(LoopAnnotatedTrace MODULE
     src/IrHelpers.cpp
     src/LoopAnalysisPass.cpp
 )
-target_include_directories(LoopAnnotatedTrace PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(LoopAnnotatedTrace PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 set_target_properties(LoopAnnotatedTrace PROPERTIES
     CXX_VISIBILITY_PRESET default
     VISIBILITY_INLINES_HIDDEN NO
@@ -62,7 +64,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         src/IrHelpers.cpp
     )
     target_include_directories(LoopAnnotatedTraceTests PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${LLVM_INCLUDE_DIRS}
     )
     target_link_libraries(LoopAnnotatedTraceTests
@@ -74,8 +76,8 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
     add_test(NAME StructFixtureTrace
         COMMAND sh
-            ${CMAKE_SOURCE_DIR}/tests/run_struct_fixture.sh
-            ${CMAKE_SOURCE_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_struct_fixture.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}
             $<TARGET_FILE:LoopAnnotatedTrace>
     )
 else()
