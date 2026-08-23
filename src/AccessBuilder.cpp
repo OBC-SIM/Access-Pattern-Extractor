@@ -65,13 +65,14 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     auto desc = describeGepAccess(GEP, SE, names, metadata);
     std::string base = std::move(desc.name);
     auto indices = std::move(desc.indices);
-    if (indices.empty())
+    auto accessPath = std::move(desc.access_path);
+    if (indices.empty() && accessPath.empty())
       return std::make_unique<ScalarAccess>(base, std::move(op));
     auto access = std::make_unique<ArrayAccess>(
       base, indices, getArrayMetadata(GEP, I.getModule()->getDataLayout()),
       std::move(op));
     access->setObjectId(getObjectId(GEP->getPointerOperand(), current, names));
-    access->setAccessPath(std::move(desc.access_path));
+    access->setAccessPath(std::move(accessPath));
     return access;
   }
 

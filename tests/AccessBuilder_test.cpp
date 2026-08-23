@@ -64,3 +64,48 @@ TEST(AccessBuilder, InlineCallCarriesArgumentObjectRefs) {
     EXPECT_EQ(call->getArgs(), (std::vector<std::string>{"A", "i"}));
     EXPECT_EQ(call->getArgObjects(), (std::vector<std::string>{"global::A", "i"}));
 }
+
+TEST(AccessBuilder, PreservesFieldOnlyGepAsStructuredAccess)
+{
+  LLVMContext Ctx;
+  Module M("field_only", Ctx);
+  IRBuilder<> Builder(Ctx);
+  auto * I32 = Type::getInt32Ty(Ctx);
+  auto * F64 = Type::getDoubleTy(Ctx);
+  auto * StructTy = StructType::create(Ctx, "struct.S");
+  StructTy->setBody({I32, F64});
+  auto * Global = new GlobalVariable(
+    M, StructTy, false, GlobalValue::ExternalLinkage, nullptr, "s");
+
+  auto * FunctionTy = FunctionType::get(Type::getVoidTy(Ctx), false);
+  Function * F =
+    Function::Create(FunctionTy, Function::ExternalLinkage, "field_only", &M);
+  BasicBlock * BB = BasicBlock::Create(Ctx, "entry", F);
+  Builder.SetInsertPoint(BB);
+  auto * Field = Builder.CreateStructGEP(StructTy, Global, 1);
+  auto * Load = Builder.CreateLoad(F64, Field);
+  Builder.CreateRetVoid();
+
+  NameMap names;
+  AccessMetadata metadata = buildAccessMetadata(M);
+  metadata.structs.at("S").fields[1].name = "y";
+  std::set<const Function *> inlineFuncs;
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  TargetLibraryInfoImpl TLII;
+  TargetLibraryInfo TLI(TLII);
+  ScalarEvolution SE(*F, TLI, AC, DT, LI);
+
+  auto stmt = makeAccessFromInstr(*Load, SE, names, metadata, inlineFuncs, *F);
+  auto * access = dynamic_cast<ArrayAccess *>(stmt.get());
+
+  ASSERT_NE(access, nullptr);
+  EXPECT_EQ(access->getArrayName(), "s.y");
+  EXPECT_TRUE(access->getIndexVars().empty());
+  EXPECT_EQ(access->getObjectId(), "global::s");
+  ASSERT_EQ(access->getAccessPath().size(), 1u);
+  EXPECT_EQ(access->getAccessPath()[0].kind, "field");
+  EXPECT_EQ(access->getAccessPath()[0].name, "y");
+  EXPECT_EQ(access->getAccessPath()[0].index, 1);
+}
