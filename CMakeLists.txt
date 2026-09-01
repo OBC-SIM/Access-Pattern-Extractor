@@ -50,6 +50,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         tests/Statement_test.cpp
         tests/CallStmt_test.cpp
         tests/AccessBuilder_test.cpp
+        tests/AccessObjectBinding_test.cpp
         tests/AccessMetadataBuilder_test.cpp
         tests/AccessPath_test.cpp
         tests/IrHelpers_test.cpp

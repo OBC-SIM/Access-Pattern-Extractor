@@ -40,7 +40,11 @@ if grep -Fq '::temp:' "$json"; then
   exit 1
 fi
 
-assert_count '"name":"4[i]","op":"store","type":"Array"' 2
-assert_count '"name":"p[i]","op":"store","type":"Array"' 1
-assert_count '"name":"storage[i]","object":"global::storage","op":"store","type":"Array"' 2
-assert_count '"name":"p[i]","object":"function:resolved_pointer_param_kernel::param:p","op":"store","type":"Array"' 1
+# Seven Array nodes are emitted. Four resolve to canonical objects, while the
+# three unresolved_* stores omit object without relying on SSA display names.
+assert_count '"type":"Array"' 7
+assert_count '"object":' 5
+assert_count '"object":"global::global_ptr"' 1
+assert_count '"object":"global::holder"' 1
+assert_count '"object":"global::storage"' 2
+assert_count '"object":"function:resolved_pointer_param_kernel::param:p"' 1
