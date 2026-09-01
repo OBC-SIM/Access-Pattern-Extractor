@@ -56,13 +56,14 @@ static Value * loadStorePointer(Instruction & I, std::string & op)
   return nullptr;
 }
 
-static void bindScalarObject(ScalarAccess & access, Value * pointer,
-                             const Function & current, const NameMap & names,
-                             const AccessMetadata & metadata)
+static std::string registeredObjectId(Value * pointer,
+                                      const Function & current,
+                                      const NameMap & names,
+                                      const AccessMetadata & metadata)
 {
   auto objectId = getObjectId(pointer, current, names);
-  if (metadata.objects.count(objectId) != 0)
-    access.setObjectId(std::move(objectId));
+  if (metadata.objects.count(objectId) == 0) return {};
+  return objectId;
 }
 
 static std::unique_ptr<Statement> makeArrayOrScalar(
@@ -78,14 +79,15 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     if (indices.empty() && accessPath.empty())
     {
       auto access = std::make_unique<ScalarAccess>(base, std::move(op));
-      bindScalarObject(*access, GEP->getPointerOperand(), current, names,
-                       metadata);
+      access->setObjectId(registeredObjectId(
+        GEP->getPointerOperand(), current, names, metadata));
       return access;
     }
     auto access = std::make_unique<ArrayAccess>(
       base, indices, getArrayMetadata(GEP, I.getModule()->getDataLayout()),
       std::move(op));
-    access->setObjectId(getObjectId(GEP->getPointerOperand(), current, names));
+    access->setObjectId(registeredObjectId(
+      GEP->getPointerOperand(), current, names, metadata));
     access->setAccessPath(std::move(accessPath));
     return access;
   }
@@ -102,12 +104,12 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     {
       auto access = std::make_unique<ArrayAccess>(
         name, std::vector<std::string>{"0"}, std::move(op));
-      access->setObjectId(getObjectId(ptr, current, names));
+      access->setObjectId(registeredObjectId(ptr, current, names, metadata));
       return access;
     }
   }
   auto access = std::make_unique<ScalarAccess>(name, std::move(op));
-  bindScalarObject(*access, ptr, current, names, metadata);
+  access->setObjectId(registeredObjectId(ptr, current, names, metadata));
   return access;
 }
 

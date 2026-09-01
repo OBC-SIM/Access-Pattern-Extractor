@@ -107,6 +107,28 @@ TEST(AccessMetadataBuilder, DistinguishesObjectIdsByScope) {
     EXPECT_EQ(getObjectId(Local, *F, names), "function:foo::local:A");
 }
 
+TEST(AccessMetadataBuilder, OmitsRuntimeDerivedPointerObjectId) {
+    LLVMContext Ctx;
+    Module M("runtime_pointer", Ctx);
+    IRBuilder<> Builder(Ctx);
+    auto* I32 = Type::getInt32Ty(Ctx);
+    auto* I32Ptr = PointerType::getUnqual(I32);
+    auto* FT = FunctionType::get(
+        Type::getVoidTy(Ctx), {PointerType::getUnqual(I32Ptr)}, false);
+    Function* F = Function::Create(
+        FT, Function::ExternalLinkage, "runtime_pointer", &M);
+    Argument* Handle = &*F->arg_begin();
+    Handle->setName("handle");
+    Builder.SetInsertPoint(BasicBlock::Create(Ctx, "entry", F));
+    LoadInst* Loaded = Builder.CreateLoad(I32Ptr, Handle, "loaded");
+    Builder.CreateRetVoid();
+
+    NameMap names;
+    names[Handle] = "handle";
+
+    EXPECT_TRUE(getObjectId(Loaded, *F, names).empty());
+}
+
 TEST(AccessMetadataBuilder, UsesArgFallbackForUnnamedParamObjectIds) {
     LLVMContext Ctx;
     Module M("metadata", Ctx);

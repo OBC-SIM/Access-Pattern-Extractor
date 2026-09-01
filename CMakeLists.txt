@@ -80,6 +80,12 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
             ${CMAKE_CURRENT_SOURCE_DIR}
             $<TARGET_FILE:LoopAnnotatedTrace>
     )
+    add_test(NAME PointerIndirectionFixtureTrace
+        COMMAND sh
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_pointer_indirection_fixture.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            $<TARGET_FILE:LoopAnnotatedTrace>
+    )
 else()
     message(WARNING "GTest not found — skipping unit tests")
 endif()

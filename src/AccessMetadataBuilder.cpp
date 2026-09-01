@@ -183,14 +183,17 @@ AccessMetadata buildAccessMetadata(Module& M) {
 
 std::string getObjectId(Value* Ptr, const Function& Current, const NameMap& names) {
     Value* Base = baseObject(Ptr);
-    std::string name = objectName(Base, names);
     if (auto* G = dyn_cast<GlobalVariable>(Base))
         return "global::" + G->getName().str();
-    if (auto* Arg = dyn_cast<Argument>(Base))
+    if (auto* Arg = dyn_cast<Argument>(Base)) {
+        std::string name = objectName(Base, names);
         return "function:" + Arg->getParent()->getName().str() + "::param:" + name;
-    if (isa<AllocaInst>(Base))
+    }
+    if (isa<AllocaInst>(Base)) {
+        std::string name = objectName(Base, names);
         return "function:" + Current.getName().str() + "::local:" + name;
-    return "function:" + Current.getName().str() + "::temp:" + name;
+    }
+    return {};
 }
 
 }  // namespace lat

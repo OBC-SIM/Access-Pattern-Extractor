@@ -25,14 +25,15 @@ AccessMetadata buildAccessMetadata(llvm::Module& M);
  * @brief 포인터 값이 가리키는 base storage object의 canonical id를 만든다.
  *
  * Global, function argument, local alloca를 구분해 같은 display name 충돌을
- * 피한다. 알 수 없는 임시 값은 현재 함수 scope의 temp provenance로 표시하며
- * 이 값은 LAT metadata `objects`에 등록되지 않을 수 있다.
+ * 피한다. load, select, phi 등 런타임 값에서 유도되어 canonical storage를
+ * 정적으로 식별할 수 없는 base는 빈 문자열로 나타낸다.
  *
  * @param Ptr     null이 아닌 load/store 또는 GEP pointer operand. 소유권은
  *                LLVM IR이 유지하며 함수는 값을 빌리기만 한다.
  * @param Current 현재 분석 중인 함수
  * @param names   debug name map
- * @return storage object 또는 임시 pointer provenance를 나타내는 candidate ID
+ * @return canonical storage candidate ID. 식별할 수 없으면 빈 문자열
+ * @note JSON에 ID를 기록하기 전에 `metadata.objects` 등록 여부를 확인해야 한다.
  */
 std::string getObjectId(llvm::Value* Ptr, const llvm::Function& Current,
                         const NameMap& names);

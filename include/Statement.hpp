@@ -61,6 +61,7 @@ public:
      * @brief scalar access를 canonical storage object에 연결한다.
      *
      * @param id 이동하여 보관할 canonical storage object ID
+     * @pre id가 비어 있거나 `metadata.objects`에 등록되어 있어야 한다.
      */
     void setObjectId(std::string id) { object_id_ = std::move(id); }
 private:
@@ -76,6 +77,9 @@ private:
  * @param array_name  배열 베이스 포인터 이름
  * @param index_vars  각 차원의 인덱스 변수 이름 목록 (루프 IV 기반)
  * @param op          접근 종류. "load" 또는 "store"
+ *
+ * metadata에 등록된 canonical object ID가 있으면 해당 storage identity를
+ * 함께 보존한다. 런타임 유도 storage 또는 legacy access는 빈 ID를 갖는다.
  */
 class ArrayAccess : public Statement {
 public:
@@ -92,8 +96,21 @@ public:
     const std::vector<std::string>& getIndexVars()  const { return index_vars_; }
     const ArrayMetadata& getMetadata()              const { return metadata_; }
     const std::string& getOp()                      const { return op_; }
+
+    /**
+     * @brief canonical storage object ID를 반환한다.
+     *
+     * @return storage identity. 정적으로 식별할 수 없으면 빈 문자열
+     */
     const std::string& getObjectId()                const { return object_id_; }
     const std::vector<AccessPathSegment>& getAccessPath() const { return access_path_; }
+
+    /**
+     * @brief array access를 canonical storage object에 연결한다.
+     *
+     * @param id 이동하여 보관할 canonical storage object ID
+     * @pre id가 비어 있거나 `metadata.objects`에 등록되어 있어야 한다.
+     */
     void setObjectId(std::string id) { object_id_ = std::move(id); }
     void setAccessPath(std::vector<AccessPathSegment> path) {
         access_path_ = std::move(path);
