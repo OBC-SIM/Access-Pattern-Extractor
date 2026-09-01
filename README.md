@@ -107,8 +107,13 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 | Function wrapper | `function`, `params`, `annotations`, `body` | 함수 이름·파라미터·본문 |
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
 | `Array` | `name`, `object`, `indices`, `access_path`, `op` | 배열 접근. 배열 shape/elem_size는 `object`로 `metadata.objects`에서 조회 |
-| `Scalar` | `name`, `op` | 스칼라 접근 |
+| `Scalar` | `name`, `object`, `op` | 식별 가능한 canonical storage ID를 보존하는 스칼라 접근 |
 | `Call` | `callee`, `args`, `arg_objects` | `ape.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
+
+`Scalar.object`는 `global::<name>`, `function:<name>::local:<name>`,
+`function:<name>::param:<name>` 형식이며, ID가 `metadata.objects`에 등록된
+경우에만 출력됩니다. 런타임 유도 pointer base나 legacy access처럼 canonical
+storage를 정적으로 식별할 수 없으면 `object`를 생략합니다.
 
 `Call.arg_objects`의 각 원소는 먼저 `metadata.objects` key로 해석합니다. key가
 있으면 callee parameter access를 actual storage object로 치환할 수 있고,

@@ -41,15 +41,18 @@ TEST(ScalarAccess, JsonFields) {
     ASSERT_NE(obj, nullptr);
     EXPECT_EQ(str(obj->getString("type")), "Scalar");
     EXPECT_EQ(str(obj->getString("name")), "x");
+    EXPECT_FALSE(obj->getString("object").hasValue());
 }
 
-TEST(ScalarAccess, JsonOpField) {
+TEST(ScalarAccess, JsonOperationAndObjectFields) {
     ScalarAccess s("x", "load");
+    s.setObjectId("global::x");
     JsonExportVisitor vis;
     s.accept(vis);
     auto* obj = toObj(vis.getResult());
     ASSERT_NE(obj, nullptr);
     EXPECT_EQ(str(obj->getString("op")), "load");
+    EXPECT_EQ(str(obj->getString("object")), "global::x");
 }
 
 // ============================================================

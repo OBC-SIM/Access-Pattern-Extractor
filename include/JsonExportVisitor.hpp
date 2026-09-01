@@ -22,6 +22,8 @@ public:
             {"type", "Scalar"},
             {"name", node.getName()}
         };
+        if (!node.getObjectId().empty())
+            obj["object"] = node.getObjectId();
         if (!node.getOp().empty())
             obj["op"] = node.getOp();
         Result_ = std::move(obj);

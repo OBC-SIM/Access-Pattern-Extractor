@@ -22,6 +22,153 @@
 using namespace lat;
 using namespace llvm;
 
+TEST(AccessBuilder, ScalarAccessCarriesCanonicalStorageObject)
+{
+  LLVMContext Ctx;
+  Module M("scalar_identity", Ctx);
+  IRBuilder<> Builder(Ctx);
+  auto * I32 = Type::getInt32Ty(Ctx);
+  auto * Global = new GlobalVariable(
+    M, I32, false, GlobalValue::ExternalLinkage, nullptr, "global_value");
+  auto * FunctionTy = FunctionType::get(Type::getVoidTy(Ctx),
+                                        {PointerType::getUnqual(I32)}, false);
+  Function * F = Function::Create(FunctionTy, Function::ExternalLinkage,
+                                  "scalar_accesses", &M);
+  Argument * Parameter = &*F->arg_begin();
+  Parameter->setName("parameter");
+  BasicBlock * BB = BasicBlock::Create(Ctx, "entry", F);
+  Builder.SetInsertPoint(BB);
+  auto * Local = Builder.CreateAlloca(I32, nullptr, "local_value");
+  auto * GlobalLoad = Builder.CreateLoad(I32, Global);
+  auto * LocalLoad = Builder.CreateLoad(I32, Local);
+  auto * ParameterLoad = Builder.CreateLoad(I32, Parameter);
+  Builder.CreateRetVoid();
+
+  NameMap names;
+  names[Local] = "local_value";
+  names[Parameter] = "parameter";
+  const auto metadata = buildAccessMetadata(M);
+  const std::set<const Function *> inlineFuncs;
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  TargetLibraryInfoImpl TLII;
+  TargetLibraryInfo TLI(TLII);
+  ScalarEvolution SE(*F, TLI, AC, DT, LI);
+
+  const auto object_id = [&](Instruction & instruction) {
+    auto statement =
+      makeAccessFromInstr(instruction, SE, names, metadata, inlineFuncs, *F);
+    const auto * access = dynamic_cast<ScalarAccess *>(statement.get());
+    EXPECT_NE(access, nullptr);
+    if (access == nullptr) return std::string{};
+    EXPECT_EQ(metadata.objects.count(access->getObjectId()), 1u);
+    return access->getObjectId();
+  };
+
+  EXPECT_EQ(object_id(*GlobalLoad), "global::global_value");
+  EXPECT_EQ(object_id(*LocalLoad),
+            "function:scalar_accesses::local:local_value");
+  EXPECT_EQ(object_id(*ParameterLoad),
+            "function:scalar_accesses::param:parameter");
+}
+
+// GEP 경로의 scalar 분기는 describeGepAccess가 인덱스도 access_path도
+// 만들지 못할 때만 도달한다. struct를 source element type으로 갖는 GEP에
+// 비상수 인덱스 하나만 주면 consumeGepIndex가 아무것도 push하지 않아
+// 그 조건이 성립한다.
+TEST(AccessBuilder, GepScalarAccessResolvesParameterStorageObject)
+{
+  LLVMContext Ctx;
+  Module M("gep_scalar_param", Ctx);
+  IRBuilder<> Builder(Ctx);
+  auto * I32 = Type::getInt32Ty(Ctx);
+  auto * StructTy = StructType::create(Ctx, "struct.S");
+  StructTy->setBody({I32, I32});
+  auto * StructPtrTy = PointerType::getUnqual(StructTy);
+
+  auto * FunctionTy =
+    FunctionType::get(Type::getVoidTy(Ctx), {StructPtrTy, I32}, false);
+  Function * F = Function::Create(FunctionTy, Function::ExternalLinkage,
+                                  "gep_scalar_param", &M);
+  auto Arg = F->arg_begin();
+  Argument * Base = &*Arg++;
+  Base->setName("p");
+  Argument * Index = &*Arg;
+  Index->setName("i");
+  BasicBlock * BB = BasicBlock::Create(Ctx, "entry", F);
+  Builder.SetInsertPoint(BB);
+  auto * Element = Builder.CreateGEP(StructTy, Base, Index);
+  auto * Load = Builder.CreateLoad(StructTy, Element);
+  Builder.CreateRetVoid();
+
+  NameMap names;
+  names[Base] = "p";
+  names[Index] = "i";
+  const AccessMetadata metadata = buildAccessMetadata(M);
+  std::set<const Function *> inlineFuncs;
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  TargetLibraryInfoImpl TLII;
+  TargetLibraryInfo TLI(TLII);
+  ScalarEvolution SE(*F, TLI, AC, DT, LI);
+
+  auto stmt = makeAccessFromInstr(*Load, SE, names, metadata, inlineFuncs, *F);
+  auto * access = dynamic_cast<ScalarAccess *>(stmt.get());
+
+  ASSERT_NE(access, nullptr);
+  EXPECT_EQ(access->getObjectId(), "function:gep_scalar_param::param:p");
+  EXPECT_EQ(metadata.objects.count(access->getObjectId()), 1u);
+}
+
+TEST(AccessBuilder, GepScalarAccessOmitsUnknownRuntimeStorageObject)
+{
+  LLVMContext Ctx;
+  Module M("gep_scalar_temp", Ctx);
+  IRBuilder<> Builder(Ctx);
+  auto * I32 = Type::getInt32Ty(Ctx);
+  auto * StructTy = StructType::create(Ctx, "struct.S");
+  StructTy->setBody({I32, I32});
+  auto * StructPtrTy = PointerType::getUnqual(StructTy);
+
+  auto * FunctionTy = FunctionType::get(
+    Type::getVoidTy(Ctx), {PointerType::getUnqual(StructPtrTy), I32}, false);
+  Function * F = Function::Create(FunctionTy, Function::ExternalLinkage,
+                                  "gep_scalar_temp", &M);
+  auto Arg = F->arg_begin();
+  Argument * Handle = &*Arg++;
+  Handle->setName("pp");
+  Argument * Index = &*Arg;
+  Index->setName("i");
+  BasicBlock * BB = BasicBlock::Create(Ctx, "entry", F);
+  Builder.SetInsertPoint(BB);
+  auto * Base = Builder.CreateLoad(StructPtrTy, Handle, "loaded");
+  auto * Element = Builder.CreateGEP(StructTy, Base, Index);
+  auto * Load = Builder.CreateLoad(StructTy, Element);
+  Builder.CreateRetVoid();
+
+  NameMap names;
+  names[Handle] = "pp";
+  names[Index] = "i";
+  const AccessMetadata metadata = buildAccessMetadata(M);
+  std::set<const Function *> inlineFuncs;
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  TargetLibraryInfoImpl TLII;
+  TargetLibraryInfo TLI(TLII);
+  ScalarEvolution SE(*F, TLI, AC, DT, LI);
+
+  auto stmt = makeAccessFromInstr(*Load, SE, names, metadata, inlineFuncs, *F);
+  auto * access = dynamic_cast<ScalarAccess *>(stmt.get());
+
+  ASSERT_NE(access, nullptr);
+  EXPECT_TRUE(access->getObjectId().empty());
+  EXPECT_EQ(metadata.objects.count("function:gep_scalar_temp::temp:loaded"),
+            0u);
+}
+
 TEST(AccessBuilder, InlineCallCarriesArgumentObjectRefs) {
     LLVMContext Ctx;
     Module M("access_builder", Ctx);

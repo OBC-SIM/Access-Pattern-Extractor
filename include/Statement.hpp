@@ -38,6 +38,9 @@ public:
  *
  * @param name 접근 대상 변수 이름 (LLVM Value 이름에서 추출)
  * @param op   접근 종류. "load" 또는 "store"
+ *
+ * metadata에 등록된 canonical object ID가 있으면 해당 storage identity를
+ * 함께 보존한다. 런타임 유도 storage 또는 legacy access는 빈 ID를 갖는다.
  */
 class ScalarAccess : public Statement {
 public:
@@ -46,9 +49,24 @@ public:
     void accept(Visitor& v) override { v.visit(*this); }
     const std::string& getName() const { return name_; }
     const std::string& getOp()   const { return op_; }
+
+    /**
+     * @brief canonical storage object ID를 반환한다.
+     *
+     * @return storage identity. 정적으로 식별할 수 없으면 빈 문자열
+     */
+    const std::string& getObjectId() const { return object_id_; }
+
+    /**
+     * @brief scalar access를 canonical storage object에 연결한다.
+     *
+     * @param id 이동하여 보관할 canonical storage object ID
+     */
+    void setObjectId(std::string id) { object_id_ = std::move(id); }
 private:
     std::string name_;
     std::string op_;
+    std::string object_id_;
 };
 
 // ── ArrayAccess: 단말 노드 ─────────────────────────────────

@@ -56,6 +56,15 @@ static Value * loadStorePointer(Instruction & I, std::string & op)
   return nullptr;
 }
 
+static void bindScalarObject(ScalarAccess & access, Value * pointer,
+                             const Function & current, const NameMap & names,
+                             const AccessMetadata & metadata)
+{
+  auto objectId = getObjectId(pointer, current, names);
+  if (metadata.objects.count(objectId) != 0)
+    access.setObjectId(std::move(objectId));
+}
+
 static std::unique_ptr<Statement> makeArrayOrScalar(
   Value * ptr, Instruction & I, ScalarEvolution & SE, const NameMap & names,
   const AccessMetadata & metadata, const Function & current, std::string op)
@@ -67,7 +76,12 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     auto indices = std::move(desc.indices);
     auto accessPath = std::move(desc.access_path);
     if (indices.empty() && accessPath.empty())
-      return std::make_unique<ScalarAccess>(base, std::move(op));
+    {
+      auto access = std::make_unique<ScalarAccess>(base, std::move(op));
+      bindScalarObject(*access, GEP->getPointerOperand(), current, names,
+                       metadata);
+      return access;
+    }
     auto access = std::make_unique<ArrayAccess>(
       base, indices, getArrayMetadata(GEP, I.getModule()->getDataLayout()),
       std::move(op));
@@ -92,7 +106,9 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
       return access;
     }
   }
-  return std::make_unique<ScalarAccess>(name, std::move(op));
+  auto access = std::make_unique<ScalarAccess>(name, std::move(op));
+  bindScalarObject(*access, ptr, current, names, metadata);
+  return access;
 }
 
 std::unique_ptr<Statement> makeAccessFromInstr(
