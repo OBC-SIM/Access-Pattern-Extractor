@@ -13,7 +13,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # ── LLVM Pass (shared library) ────────────────────────────
-add_library(LoopAnnotatedTrace MODULE
+add_library(LatBuilders OBJECT
     src/AccessBuilder.cpp
     src/AccessMetadata.cpp
     src/AccessMetadataBuilder.cpp
@@ -21,8 +21,16 @@ add_library(LoopAnnotatedTrace MODULE
     src/AccessTypeInfo.cpp
     src/ArrayMetadata.cpp
     src/IrHelpers.cpp
-    src/LoopAnalysisPass.cpp
+    src/StatementBuilder.cpp
+    src/LatModuleBuilder.cpp
+    src/AnalysisRegion.cpp
+    src/region/RegionLoopBounds.cpp
+    src/region/RegionAccessBuilder.cpp
 )
+target_include_directories(LatBuilders PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(LatBuilders PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_library(LoopAnnotatedTrace MODULE src/LoopAnalysisPass.cpp)
+target_link_libraries(LoopAnnotatedTrace PRIVATE LatBuilders)
 target_include_directories(LoopAnnotatedTrace PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
@@ -75,6 +83,19 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         pthread
     )
     add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
+    llvm_map_components_to_libnames(LLVM_REGION_TEST_LIBS asmparser passes)
+    add_executable(YardaRegionIrTests
+        tests/helpers/RegionTestMain.cpp
+        tests/AnalysisRegion_test.cpp)
+    target_link_libraries(YardaRegionIrTests PRIVATE
+        LatBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
+    add_test(NAME YardaRegionIrTests COMMAND YardaRegionIrTests)
+    find_program(YARDA_REGION_OPT NAMES opt-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
+    add_test(NAME LegacyRegionRejection COMMAND ${CMAKE_COMMAND}
+        "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-region-rejection"
+        "-DOPT=${YARDA_REGION_OPT}"
+        "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_legacy_region_rejection.cmake")
     add_test(NAME StructFixtureTrace
         COMMAND sh
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_struct_fixture.sh
@@ -89,4 +110,9 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     )
 else()
     message(WARNING "GTest not found — skipping unit tests")
+endif()
+
+option(YARDA_BUILD_REGION_FRONTEND "Build the fixed Clang 14 region frontend" OFF)
+if(YARDA_BUILD_REGION_FRONTEND)
+    include(cmake/RegionFrontend.cmake)
 endif()

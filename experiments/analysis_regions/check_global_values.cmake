@@ -13,8 +13,7 @@ string(REPLACE " region" " outside" global_native_expected "${global_expected}")
 expect_snapshot(global-values-native-canonical.ll "${global_native_expected}" global-values-native.txt)
 
 foreach(input global-values-native-canonical global-values-canonical global-values-sealed)
-    run("${OPT}" "-load-pass-plugin=${APE_PLUGIN}" -passes=loop-annotated-trace
-        "${input}.ll" -disable-output)
+    run_legacy_lat("${input}")
 endforeach()
 file(READ "${WORK_DIR}/global-values-native-canonical_ape.json" global_native_lat)
 foreach(input global-values-canonical global-values-sealed)

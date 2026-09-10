@@ -19,13 +19,12 @@ static bool isStorageObject(Value * V)
          isa<AllocaInst>(Base);
 }
 
-static std::unique_ptr<Statement> makeInlineCall(
-  CallBase & Call, const NameMap & names,
-  const std::set<const Function *> & inlineFuncs, const Function & current)
+std::unique_ptr<Statement> makeDirectCall(CallBase & Call,
+                                          const NameMap & names,
+                                          const Function & current)
 {
   Function * Callee = Call.getCalledFunction();
-  if (!Callee || Callee == &current || !inlineFuncs.count(Callee))
-    return nullptr;
+  if (!Callee) return nullptr;
 
   std::vector<std::string> args;
   std::vector<std::string> argObjects;
@@ -56,8 +55,7 @@ static Value * loadStorePointer(Instruction & I, std::string & op)
   return nullptr;
 }
 
-static std::string registeredObjectId(Value * pointer,
-                                      const Function & current,
+static std::string registeredObjectId(Value * pointer, const Function & current,
                                       const NameMap & names,
                                       const AccessMetadata & metadata)
 {
@@ -79,15 +77,15 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
     if (indices.empty() && accessPath.empty())
     {
       auto access = std::make_unique<ScalarAccess>(base, std::move(op));
-      access->setObjectId(registeredObjectId(
-        GEP->getPointerOperand(), current, names, metadata));
+      access->setObjectId(
+        registeredObjectId(GEP->getPointerOperand(), current, names, metadata));
       return access;
     }
     auto access = std::make_unique<ArrayAccess>(
       base, indices, getArrayMetadata(GEP, I.getModule()->getDataLayout()),
       std::move(op));
-    access->setObjectId(registeredObjectId(
-      GEP->getPointerOperand(), current, names, metadata));
+    access->setObjectId(
+      registeredObjectId(GEP->getPointerOperand(), current, names, metadata));
     access->setAccessPath(std::move(accessPath));
     return access;
   }
@@ -119,7 +117,12 @@ std::unique_ptr<Statement> makeAccessFromInstr(
   const std::set<const Function *> & inlineFuncs, const Function & current)
 {
   if (auto * Call = dyn_cast<CallBase>(&I))
-    return makeInlineCall(*Call, names, inlineFuncs, current);
+  {
+    auto * callee = Call->getCalledFunction();
+    if (!callee || callee == &current || !inlineFuncs.count(callee))
+      return nullptr;
+    return makeDirectCall(*Call, names, current);
+  }
 
   std::string op;
   Value * ptr = loadStorePointer(I, op);

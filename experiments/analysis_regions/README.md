@@ -2,8 +2,16 @@
 
 This standalone experiment validates the boundary route chosen by
 [the R1 contract](../../../docs/analysis-regions-v1.md). It is not a production
-region frontend: source AST validation, region LAT emission, multi-task binding
-and cache analysis remain R2 work. It is not linked into the product build.
+region frontend. Source AST validation, selected LAT emission and task binding
+are implemented in the [optional R2 frontend](../../docs/analysis-regions.md).
+The experiment itself is not linked into the product build.
+
+R2's legacy LLVM plugin rejects recognizable region transport. The experiment's
+whole-function control comparison therefore uses
+[a transport-free copy helper](helpers/legacy_lat.cmake). Original tagged IR
+remains unchanged for membership and normalization observations. This adapter
+also works with the earlier plugin; it does not add an imported-region-IR input
+path to the product.
 
 Region directives use the same uppercase snake case as `APE_ANALYZE` and
 `APE_INLINE`:

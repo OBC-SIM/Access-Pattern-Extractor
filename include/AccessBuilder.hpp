@@ -3,16 +3,27 @@
 #include <memory>
 #include <set>
 
+#include "IrHelpers.hpp"
+#include "Statement.hpp"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 
-#include "IrHelpers.hpp"
-#include "Statement.hpp"
-
-namespace lat {
+namespace lat
+{
 
 struct AccessMetadata;
+
+/**
+ * @brief Preserve positional arguments and canonical objects for a direct call.
+ * @param call Borrowed instruction; no IR is modified.
+ * @param names Borrowed source names for argument and object binding.
+ * @param current Borrowed caller owning local storage identities.
+ * @return Owned Call statement, or nullptr for an indirect call.
+ */
+std::unique_ptr<Statement> makeDirectCall(llvm::CallBase & call,
+                                          const NameMap & names,
+                                          const llvm::Function & current);
 
 /**
  * @brief LLVM instruction 하나를 LAT access/call Statement로 변환한다.
@@ -28,12 +39,10 @@ struct AccessMetadata;
  * @param current     현재 분석 중인 함수
  * @return 변환된 Statement. 분석 대상이 아니면 nullptr
  */
-std::unique_ptr<Statement> makeAccessFromInstr(
-    llvm::Instruction& I,
-    llvm::ScalarEvolution& SE,
-    const NameMap& names,
-    const AccessMetadata& metadata,
-    const std::set<const llvm::Function*>& inlineFuncs,
-    const llvm::Function& current);
+std::unique_ptr<Statement>
+makeAccessFromInstr(llvm::Instruction & I, llvm::ScalarEvolution & SE,
+                    const NameMap & names, const AccessMetadata & metadata,
+                    const std::set<const llvm::Function *> & inlineFuncs,
+                    const llvm::Function & current);
 
 }  // namespace lat

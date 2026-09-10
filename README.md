@@ -4,6 +4,10 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 [Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `ape.analyze` / `ape.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/LAT v2 JSON을 출력합니다.
 
+함수 내부 구간을 선택하는 선택적 C++ 실행 파일 `yarda_region_lat`도 제공합니다.
+`APE_ANALYZE_BEGIN` / `APE_ANALYZE_END` 문법, 고정 Clang 14 파이프라인과 빌드·사용법은
+[분석 구간 문서](docs/analysis-regions.md)를 참고하세요.
+
 ---
 
 ## 출력 형식

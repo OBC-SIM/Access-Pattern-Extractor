@@ -1,9 +1,9 @@
 if(NOT EXISTS "${APE_PLUGIN}")
     message(FATAL_ERROR "Build the existing root project before this experiment: ${APE_PLUGIN}")
 endif()
+include("${SOURCE_DIR}/helpers/legacy_lat.cmake")
 foreach(input canonical native-canonical sealed)
-    run("${OPT}" "-load-pass-plugin=${APE_PLUGIN}" -passes=loop-annotated-trace
-        "${input}.ll" -disable-output)
+    run_legacy_lat("${input}")
 endforeach()
 file(READ "${WORK_DIR}/canonical_ape.json" captured_lat)
 file(READ "${WORK_DIR}/native-canonical_ape.json" native_lat)
