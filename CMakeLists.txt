@@ -21,6 +21,9 @@ add_library(LatBuilders OBJECT
     src/AccessTypeInfo.cpp
     src/ArrayMetadata.cpp
     src/IrHelpers.cpp
+    src/index/IndexResolution.cpp
+    src/index/LoopInduction.cpp
+    src/index/ScalarFormal.cpp
     src/StatementBuilder.cpp
     src/LatModuleBuilder.cpp
     src/AnalysisRegion.cpp
@@ -71,6 +74,10 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         src/AccessTypeInfo.cpp
         src/ArrayMetadata.cpp
         src/IrHelpers.cpp
+        src/index/IndexResolution.cpp
+        src/index/LoopInduction.cpp
+        src/index/ScalarFormal.cpp
+        src/region/RegionLoopBounds.cpp
     )
     target_include_directories(LoopAnnotatedTraceTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include

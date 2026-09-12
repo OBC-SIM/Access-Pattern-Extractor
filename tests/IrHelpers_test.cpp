@@ -162,30 +162,35 @@ TEST(GetValueName, PointerArgumentsUseBaseName) {
     EXPECT_EQ(getValueName(Arg, names), "arr");
 }
 
-TEST(ResolveIndex, ScalarArgumentLoadKeepsDebugName) {
-    LLVMContext Ctx;
-    Module M("test", Ctx);
-    FunctionType* FT = FunctionType::get(Type::getVoidTy(Ctx), false);
-    Function* F = Function::Create(FT, Function::ExternalLinkage, "foo", &M);
-    BasicBlock* BB = BasicBlock::Create(Ctx, "entry", F);
-    IRBuilder<> Builder(BB);
+TEST(ResolveIndex, ScalarArgumentLoadKeepsDebugName)
+{
+  LLVMContext Ctx;
+  Module M("test", Ctx);
+  FunctionType * FT =
+    FunctionType::get(Type::getVoidTy(Ctx), {Type::getInt32Ty(Ctx)}, false);
+  Function * F = Function::Create(FT, Function::ExternalLinkage, "foo", &M);
+  BasicBlock * BB = BasicBlock::Create(Ctx, "entry", F);
+  IRBuilder<> Builder(BB);
 
-    Type* I32 = Type::getInt32Ty(Ctx);
-    AllocaInst* Slot = Builder.CreateAlloca(I32);
-    LoadInst* Loaded = Builder.CreateLoad(I32, Slot);
-    Value* Extended = Builder.CreateSExt(Loaded, Type::getInt64Ty(Ctx));
-    Builder.CreateRetVoid();
+  Type * I32 = Type::getInt32Ty(Ctx);
+  AllocaInst * Slot = Builder.CreateAlloca(I32);
+  Argument * Arg = &*F->arg_begin();
+  Builder.CreateStore(Arg, Slot);
+  LoadInst * Loaded = Builder.CreateLoad(I32, Slot);
+  Value * Extended = Builder.CreateSExt(Loaded, Type::getInt64Ty(Ctx));
+  Builder.CreateRetVoid();
 
-    NameMap names;
-    names[Slot] = "idx";
-    DominatorTree DT(*F);
-    LoopInfo LI(DT);
-    AssumptionCache AC(*F);
-    TargetLibraryInfoImpl TLII;
-    TargetLibraryInfo TLI(TLII);
-    ScalarEvolution SE(*F, TLI, AC, DT, LI);
+  NameMap names;
+  names[Slot] = "idx";
+  names[Arg] = "idx";
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  TargetLibraryInfoImpl TLII;
+  TargetLibraryInfo TLI(TLII);
+  ScalarEvolution SE(*F, TLI, AC, DT, LI);
 
-    EXPECT_EQ(resolveIndex(Extended, SE, names), std::vector<std::string>{"idx"});
+  EXPECT_EQ(resolveIndex(Extended, SE, names), std::vector<std::string>{"idx"});
 }
 
 // ── function annotations ─────────────────────────────────────

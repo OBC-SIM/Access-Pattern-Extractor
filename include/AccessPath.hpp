@@ -45,11 +45,11 @@ struct GepAccessDescription {
  * @param SE       ScalarEvolution 분석 결과
  * @param names    debug name map
  * @param metadata root metadata
+ * @param useSite Borrowed memory access; null uses the outermost GEP location.
  * @return display name, legacy indices, structured access path
  */
-GepAccessDescription describeGepAccess(llvm::GEPOperator* GEP,
-                                       llvm::ScalarEvolution& SE,
-                                       const NameMap& names,
-                                       const AccessMetadata& metadata);
+GepAccessDescription describeGepAccess(
+  llvm::GEPOperator * GEP, llvm::ScalarEvolution & SE, const NameMap & names,
+  const AccessMetadata & metadata, const llvm::Instruction * useSite = nullptr);
 
 }  // namespace lat

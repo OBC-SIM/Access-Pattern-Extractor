@@ -1,3 +1,7 @@
+#include <optional>
+#include <stdexcept>
+#include <string>
+
 #include "LatModuleBuilder.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
@@ -26,7 +30,23 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass>
         "[LoopAnnotatedTrace] region transport requires yarda_region_lat");
       return PreservedAnalyses::all();
     }
-    auto root = lat::buildLatModule(M, MAM);
+    llvm::json::Object root;
+    std::optional<std::string> failure;
+    try
+    {
+      root = lat::buildLatModule(M, MAM);
+    }
+    catch (const std::invalid_argument & error)
+    {
+      failure = error.what();
+    }
+    if (failure)
+    {
+      // Finish unwinding the C++ exception before a host handler can exit.
+      sys::RunInterruptHandlers();
+      M.getContext().emitError(llvm::Twine("[LoopAnnotatedTrace] ") + *failure);
+      return PreservedAnalyses::all();
+    }
     llvm::StringRef stem = llvm::sys::path::stem(M.getModuleIdentifier());
     std::string filename = stem.str() + "_ape.json";
     std::error_code EC;

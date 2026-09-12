@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "AccessBuilder.hpp"
+#include "index/LoopInduction.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "region/RegionAccessBuilder.hpp"
 #include "region/RegionLoopBounds.hpp"
@@ -84,10 +85,8 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(
   const std::set<const Function *> & inlineFuncs,
   const lat::AccessMetadata & metadata, const Function & current, bool strict)
 {
-  const auto bounds =
-    strict ? region::resolveLoopBounds(*L, SE)
-           : region::LoopBounds{getLoopStart(L, SE), getTripCount(L, SE),
-                                getLoopStep(L, SE)};
+  const auto bounds = strict ? region::resolveLoopBounds(*L, SE)
+                             : index::resolveInduction(L, SE).bounds;
   auto nest = std::make_unique<lat::LoopNest>(getInductionVarName(L, SE, names),
                                               bounds.start, bounds.bound, depth,
                                               bounds.step);
@@ -132,7 +131,6 @@ void buildRootStatements(Function & F, LoopInfo & LI, ScalarEvolution & SE,
     }
   for (Loop * L : LI)
   {
-    if (!strict && getTripCount(L, SE) == 0) continue;
     topLoopHeaders[L->getHeader()] = L;
     for (BasicBlock * BB : L->blocks()) topLoopBlocks.insert(BB);
   }

@@ -1,5 +1,6 @@
 #include "../include/AccessPath.hpp"
 
+#include "index/IndexResolution.hpp"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/GlobalVariable.h"
@@ -55,36 +56,42 @@ static AccessPathSegment indexSegment(std::string value) {
     return segment;
 }
 
-static void appendResolvedIndex(Value* Idx, ScalarEvolution& SE,
-                                const NameMap& names,
-                                GepAccessDescription& out) {
-    for (auto value : resolveIndex(Idx, SE, names)) {
-        out.indices.push_back(value);
-        out.access_path.push_back(indexSegment(value));
-        out.name += "[" + value + "]";
-    }
+static void appendResolvedIndex(Value * Idx, ScalarEvolution & SE,
+                                const NameMap & names,
+                                GepAccessDescription & out,
+                                const Instruction * useSite)
+{
+  auto value = index::resolveSingleIndex(Idx, SE, names, useSite);
+  out.indices.push_back(value);
+  out.access_path.push_back(indexSegment(value));
+  out.name += "[" + value + "]";
 }
 
-static Type* consumeGepIndex(Type* Ty, Value* Idx, ScalarEvolution& SE,
-                             const NameMap& names,
-                             const AccessMetadata& metadata,
-                             GepAccessDescription& out) {
-    if (auto* StructTy = dyn_cast<StructType>(Ty)) {
-        if (auto* C = dyn_cast<ConstantInt>(Idx)) {
-            uint64_t field = C->getZExtValue();
-            std::string name = fieldName(StructTy, field, metadata);
-            out.name += "." + name;
-            out.access_path.push_back(fieldSegment(std::move(name), field));
-            return StructTy->getElementType(static_cast<unsigned>(field));
-        }
-        return Ty;
+static Type * consumeGepIndex(Type * Ty, Value * Idx, ScalarEvolution & SE,
+                              const NameMap & names,
+                              const AccessMetadata & metadata,
+                              GepAccessDescription & out,
+                              const Instruction * useSite)
+{
+  if (auto * StructTy = dyn_cast<StructType>(Ty))
+  {
+    if (auto * C = dyn_cast<ConstantInt>(Idx))
+    {
+      uint64_t field = C->getZExtValue();
+      std::string name = fieldName(StructTy, field, metadata);
+      out.name += "." + name;
+      out.access_path.push_back(fieldSegment(std::move(name), field));
+      return StructTy->getElementType(static_cast<unsigned>(field));
     }
-    if (auto* ArrayTy = dyn_cast<ArrayType>(Ty)) {
-        appendResolvedIndex(Idx, SE, names, out);
-        return ArrayTy->getElementType();
-    }
-    appendResolvedIndex(Idx, SE, names, out);
     return Ty;
+  }
+  if (auto * ArrayTy = dyn_cast<ArrayType>(Ty))
+  {
+    appendResolvedIndex(Idx, SE, names, out, useSite);
+    return ArrayTy->getElementType();
+  }
+  appendResolvedIndex(Idx, SE, names, out, useSite);
+  return Ty;
 }
 
 static void collectGepChain(GEPOperator* GEP, std::vector<GEPOperator*>& chain) {
@@ -95,25 +102,34 @@ static void collectGepChain(GEPOperator* GEP, std::vector<GEPOperator*>& chain) 
 
 }  // namespace
 
-GepAccessDescription describeGepAccess(GEPOperator* GEP, ScalarEvolution& SE,
-                                       const NameMap& names,
-                                       const AccessMetadata& metadata) {
-    std::vector<GEPOperator*> chain;
-    collectGepChain(GEP, chain);
+GepAccessDescription describeGepAccess(GEPOperator * GEP, ScalarEvolution & SE,
+                                       const NameMap & names,
+                                       const AccessMetadata & metadata,
+                                       const Instruction * useSite)
+{
+  if (!useSite) useSite = dyn_cast<Instruction>(GEP);
+  std::vector<GEPOperator *> chain;
+  collectGepChain(GEP, chain);
 
-    GepAccessDescription result;
-    result.name = objectName(baseObject(GEP->getPointerOperand()), names);
+  GepAccessDescription result;
+  result.name = objectName(baseObject(GEP->getPointerOperand()), names);
 
-    for (GEPOperator* Current : chain) {
-        Type* Ty = Current->getSourceElementType();
-        auto it = Current->idx_begin();
-        if (Current->getNumIndices() > 1 && isa<ConstantInt>(*it) &&
-            cast<ConstantInt>(*it)->isZero())
-            ++it;
-        for (; it != Current->idx_end(); ++it)
-            Ty = consumeGepIndex(Ty, *it, SE, names, metadata, result);
+  for (GEPOperator * Current : chain)
+  {
+    Type * Ty = Current->getSourceElementType();
+    auto it = Current->idx_begin();
+    if (it != Current->idx_end())
+    {
+      // The first operand steps through pointers to Ty, not its fields.
+      if (!(Current->getNumIndices() > 1 && isa<ConstantInt>(*it) &&
+            cast<ConstantInt>(*it)->isZero()))
+        appendResolvedIndex(*it, SE, names, result, useSite);
+      ++it;
     }
-    return result;
+    for (; it != Current->idx_end(); ++it)
+      Ty = consumeGepIndex(Ty, *it, SE, names, metadata, result, useSite);
+  }
+  return result;
 }
 
 }  // namespace lat

@@ -73,11 +73,7 @@ TEST(AccessBuilder, ScalarAccessCarriesCanonicalStorageObject)
             "function:scalar_accesses::param:parameter");
 }
 
-// GEP 경로의 scalar 분기는 describeGepAccess가 인덱스도 access_path도
-// 만들지 못할 때만 도달한다. struct를 source element type으로 갖는 GEP에
-// 비상수 인덱스 하나만 주면 consumeGepIndex가 아무것도 push하지 않아
-// 그 조건이 성립한다.
-TEST(AccessBuilder, GepScalarAccessResolvesParameterStorageObject)
+TEST(AccessBuilder, StructPointerIndexRetainsParameterStorageObject)
 {
   LLVMContext Ctx;
   Module M("gep_scalar_param", Ctx);
@@ -115,14 +111,15 @@ TEST(AccessBuilder, GepScalarAccessResolvesParameterStorageObject)
   ScalarEvolution SE(*F, TLI, AC, DT, LI);
 
   auto stmt = makeAccessFromInstr(*Load, SE, names, metadata, inlineFuncs, *F);
-  auto * access = dynamic_cast<ScalarAccess *>(stmt.get());
+  auto * access = dynamic_cast<ArrayAccess *>(stmt.get());
 
   ASSERT_NE(access, nullptr);
+  EXPECT_EQ(access->getIndexVars(), (std::vector<std::string>{"i"}));
   EXPECT_EQ(access->getObjectId(), "function:gep_scalar_param::param:p");
   EXPECT_EQ(metadata.objects.count(access->getObjectId()), 1u);
 }
 
-TEST(AccessBuilder, GepScalarAccessOmitsUnknownRuntimeStorageObject)
+TEST(AccessBuilder, StructPointerIndexOmitsUnknownRuntimeStorageObject)
 {
   LLVMContext Ctx;
   Module M("gep_scalar_temp", Ctx);
@@ -161,9 +158,10 @@ TEST(AccessBuilder, GepScalarAccessOmitsUnknownRuntimeStorageObject)
   ScalarEvolution SE(*F, TLI, AC, DT, LI);
 
   auto stmt = makeAccessFromInstr(*Load, SE, names, metadata, inlineFuncs, *F);
-  auto * access = dynamic_cast<ScalarAccess *>(stmt.get());
+  auto * access = dynamic_cast<ArrayAccess *>(stmt.get());
 
   ASSERT_NE(access, nullptr);
+  EXPECT_EQ(access->getIndexVars(), (std::vector<std::string>{"i"}));
   EXPECT_TRUE(access->getObjectId().empty());
   EXPECT_EQ(metadata.objects.count("function:gep_scalar_temp::temp:loaded"),
             0u);

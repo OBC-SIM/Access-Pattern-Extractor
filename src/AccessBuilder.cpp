@@ -2,6 +2,8 @@
 
 #include "../include/AccessMetadataBuilder.hpp"
 #include "../include/AccessPath.hpp"
+#include "index/IndexResolution.hpp"
+#include "index/ScalarFormal.hpp"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Operator.h"
@@ -19,25 +21,42 @@ static bool isStorageObject(Value * V)
          isa<AllocaInst>(Base);
 }
 
-std::unique_ptr<Statement> makeDirectCall(CallBase & Call,
-                                          const NameMap & names,
-                                          const Function & current)
+static std::unique_ptr<Statement> makeCall(CallBase & Call,
+                                           const NameMap & names,
+                                           const Function & current,
+                                           ScalarEvolution * evolution)
 {
   Function * Callee = Call.getCalledFunction();
   if (!Callee) return nullptr;
 
   std::vector<std::string> args;
   std::vector<std::string> argObjects;
+  unsigned position = 0;
   for (Value * Arg : Call.args())
   {
-    args.push_back(getValueName(Arg, names));
+    const bool unsignedValue =
+      evolution && Arg->getType()->isIntegerTy() &&
+      position < Callee->arg_size() &&
+      index::usesUnsignedFormal(*Callee->getArg(position));
+    args.push_back(evolution && Arg->getType()->isIntegerTy()
+                     ? index::resolveSingleIndex(Arg, *evolution, names, &Call,
+                                                 unsignedValue)
+                     : getValueName(Arg, names));
     if (isStorageObject(Arg))
       argObjects.push_back(getObjectId(Arg, current, names));
     else
-      argObjects.push_back(getValueName(Arg, names));
+      argObjects.push_back(args.back());
+    ++position;
   }
   return std::make_unique<CallStmt>(Callee->getName().str(), args,
                                     std::move(argObjects));
+}
+
+std::unique_ptr<Statement> makeDirectCall(CallBase & Call,
+                                          const NameMap & names,
+                                          const Function & current)
+{
+  return makeCall(Call, names, current, nullptr);
 }
 
 static Value * loadStorePointer(Instruction & I, std::string & op)
@@ -70,7 +89,7 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
 {
   if (auto * GEP = dyn_cast<GEPOperator>(ptr))
   {
-    auto desc = describeGepAccess(GEP, SE, names, metadata);
+    auto desc = describeGepAccess(GEP, SE, names, metadata, &I);
     std::string base = std::move(desc.name);
     auto indices = std::move(desc.indices);
     auto accessPath = std::move(desc.access_path);
@@ -121,7 +140,7 @@ std::unique_ptr<Statement> makeAccessFromInstr(
     auto * callee = Call->getCalledFunction();
     if (!callee || callee == &current || !inlineFuncs.count(callee))
       return nullptr;
-    return makeDirectCall(*Call, names, current);
+    return makeCall(*Call, names, current, &SE);
   }
 
   std::string op;

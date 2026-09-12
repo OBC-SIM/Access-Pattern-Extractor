@@ -19,14 +19,16 @@ opt-14 -load-pass-plugin "$plugin" \
   test_struct_g.ll -o /dev/null
 
 json=test_struct_g_ape.json
+loop_var=$(sed -n 's/.*"var":"\([A-Za-z_][A-Za-z0-9_]*\)".*/\1/p' "$json")
+test -n "$loop_var"
 
 grep -q '"schema_version":2' "$json"
-grep -q '"name":"o.items\[i\].x"' "$json"
-grep -q '"name":"o.items\[i\].y"' "$json"
+grep -Fq "\"name\":\"o.items[$loop_var].x\"" "$json"
+grep -Fq "\"name\":\"o.items[$loop_var].y\"" "$json"
 grep -q '"object":"function:struct_field_access::param:o"' "$json"
-grep -q '"indices":\["i"\]' "$json"
-grep -q '"access_path":\[{"index":1,"kind":"field","name":"items"},{"kind":"index","value":"i"},{"index":0,"kind":"field","name":"x"}\]' "$json"
-grep -q '"access_path":\[{"index":1,"kind":"field","name":"items"},{"kind":"index","value":"i"},{"index":1,"kind":"field","name":"y"}\]' "$json"
+grep -Fq "\"indices\":[\"$loop_var\"]" "$json"
+grep -Fq "\"access_path\":[{\"index\":1,\"kind\":\"field\",\"name\":\"items\"},{\"kind\":\"index\",\"value\":\"$loop_var\"},{\"index\":0,\"kind\":\"field\",\"name\":\"x\"}]" "$json"
+grep -Fq "\"access_path\":[{\"index\":1,\"kind\":\"field\",\"name\":\"items\"},{\"kind\":\"index\",\"value\":\"$loop_var\"},{\"index\":1,\"kind\":\"field\",\"name\":\"y\"}]" "$json"
 grep -q '"Outer"' "$json"
 grep -q '"S"' "$json"
 grep -q '"name":"items"' "$json"
