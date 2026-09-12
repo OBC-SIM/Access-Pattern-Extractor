@@ -17,10 +17,10 @@ std::string secondaryInduction(const std::string & step)
   return source;
 }
 
-TEST(IndexBinding, RejectsDifferentRecurrenceEvenWhenPhiAppearsFirst)
+TEST(IndexBinding, RelatesSecondaryRecurrenceToControllingPhi)
 {
   IndexIr ir(secondaryInduction("2"));
-  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*i+9"}));
 }
 
 TEST(IndexBinding, UsesControllingInductionForSecondaryPhiOffset)
@@ -32,7 +32,8 @@ TEST(IndexBinding, UsesControllingInductionForSecondaryPhiOffset)
 TEST(IndexBinding, DebugAliasOfSecondaryPhiCannotSelectAnotherLoopVariable)
 {
   IndexIr ir(secondaryInduction("2"));
-  EXPECT_THROW(ir.resolve({{ir.value("j"), "i"}}), std::invalid_argument);
+  EXPECT_EQ(ir.resolve({{ir.value("j"), "i"}}),
+            (std::vector<std::string>{"2*i+9"}));
 }
 
 std::string nestedIndex(const std::string & body, bool matrix)
@@ -59,11 +60,16 @@ std::string nestedIndex(const std::string & body, bool matrix)
          " br label %outer\nexit: ret void\n}\n";
 }
 
-TEST(IndexBinding, RejectsFlattenedIndexInsteadOfInventingDimensions)
+TEST(IndexBinding, PreservesFlattenedExpressionAsOneIndex)
 {
   IndexIr ir(nestedIndex(
     "%scaled = mul i64 %i, 8\n%index = add i64 %scaled, %j", false));
-  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"8*i+j"}));
+  auto * gep = llvm::cast<llvm::GEPOperator>(ir.value("p"));
+  const auto result = describeGepAccess(gep, ir.evolution(), {}, {});
+  EXPECT_EQ(result.indices, (std::vector<std::string>{"8*i+j"}));
+  ASSERT_EQ(result.access_path.size(), 1U);
+  EXPECT_EQ(result.access_path[0].value, "8*i+j");
 }
 
 TEST(IndexBinding, PreservesActualTwoDimensionalGep)

@@ -6,7 +6,7 @@ namespace lat::index
 {
 
 /**
- * @brief Preserve one GEP index using the existing LAT integer/IV grammar.
+ * @brief Preserve one GEP index as a proved integer affine expression.
  * @param value Non-null borrowed integer index.
  * @param evolution Analysis belonging to the index's function.
  * @param names Borrowed debug-name map; names do not establish equivalence.
@@ -14,7 +14,7 @@ namespace lat::index
  * location.
  * @param unsignedValue Interpret an inline actual in its formal's unsigned
  * domain.
- * @return One constant, bound IV, IV plus signed offset, or scalar formal name.
+ * @return One canonical sum of constant-coefficient IV/formal terms.
  * @throws std::invalid_argument If an index would lose terms, wrap or binding.
  */
 std::string resolveSingleIndex(llvm::Value * value,

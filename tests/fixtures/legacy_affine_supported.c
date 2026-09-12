@@ -94,3 +94,81 @@ ANALYZE void unsigned_boundary(void)
   touch_byte(128);
   touch_byte(255);
 }
+
+ANALYZE void scaled_left(void)
+{
+  for (int i = 0; i < 4; ++i) a[2 * i] = 1;
+}
+
+ANALYZE void scaled_right(void)
+{
+  for (int i = 0; i < 4; ++i) a[i * 2] = 1;
+}
+
+ANALYZE void chained(void)
+{
+  for (int i = 0; i < 4; ++i) a[2 * i * 2] = 1;
+}
+
+ANALYZE void nested_product(void)
+{
+  for (int i = 0; i < 4; ++i) a[2 * (i * 2)] = 1;
+}
+
+ANALYZE void constant_product(void)
+{
+  for (int i = 0; i < 4; ++i) a[i * (2 * 2)] = 1;
+}
+
+ANALYZE void temporary(void)
+{
+  for (int i = 0; i < 4; ++i)
+  {
+    int t = 2 * i;
+    a[t] = 1;
+  }
+}
+
+ANALYZE void scaled_stride(void)
+{
+  for (int i = 2; i < 8; i += 2) a[2 * i + 1] = 1;
+}
+
+ANALYZE void scaled_descending(void)
+{
+  for (int i = 5; i > 0; i -= 2) a[2 * i + 1] = 1;
+}
+
+ANALYZE void negative_coefficient(void)
+{
+  for (int i = 0; i < 4; ++i) a[7 - i] = 1;
+}
+
+ANALYZE void flattened(void)
+{
+  for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 3; ++j) a[8 * i + j] = 1;
+}
+
+ANALYZE void scaled_fields(void)
+{
+  struct Record * p = records;
+  for (int i = 0; i < 2; ++i) p[2 * i].value = 1;
+}
+
+int affine_data[1024];
+
+INLINE void affine_byte(unsigned char x) { affine_data[2 * (int)x + 1] = 1; }
+INLINE void affine_forward(unsigned char x) { affine_byte(x); }
+
+ANALYZE void affine_actual(void)
+{
+  for (int i = 0; i < 3; ++i) affine_forward(i + 1);
+}
+
+ANALYZE void affine_boundary(void)
+{
+  affine_byte(127);
+  affine_byte(128);
+  affine_byte(255);
+}

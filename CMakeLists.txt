@@ -21,6 +21,8 @@ add_library(LatBuilders OBJECT
     src/AccessTypeInfo.cpp
     src/ArrayMetadata.cpp
     src/IrHelpers.cpp
+    src/index/AffineExpression.cpp
+    src/index/AffineResolution.cpp
     src/index/IndexResolution.cpp
     src/index/LoopInduction.cpp
     src/index/ScalarFormal.cpp
@@ -74,6 +76,8 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         src/AccessTypeInfo.cpp
         src/ArrayMetadata.cpp
         src/IrHelpers.cpp
+        src/index/AffineExpression.cpp
+        src/index/AffineResolution.cpp
         src/index/IndexResolution.cpp
         src/index/LoopInduction.cpp
         src/index/ScalarFormal.cpp
@@ -92,6 +96,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
     llvm_map_components_to_libnames(LLVM_REGION_TEST_LIBS asmparser passes)
     add_executable(YardaIndexTests tests/IndexResolution_test.cpp
+        tests/IndexAffine_test.cpp
         tests/IndexRange_test.cpp tests/IndexBinding_test.cpp
         tests/IndexFormal_test.cpp tests/IndexScope_test.cpp
         tests/IndexProducer_test.cpp tests/helpers/RegionTestMain.cpp)
@@ -106,16 +111,24 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME YardaRegionIrTests COMMAND YardaRegionIrTests)
     find_program(YARDA_REGION_OPT NAMES opt-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
     find_program(YARDA_INDEX_CLANG NAMES clang-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
-    foreach(index "2*i" "i*2" "2*i*2" "2*(i*2)" "i*(2*2)"
-                  "2*i+1" "7-i" "8*i+j" "t" "n*i" "i/2" "i*i")
+    foreach(index "n*i" "i/2" "i*i" "i%2" "(signed char)(40*i)"
+                  "(unsigned char)(64*i)" "n+1")
         string(REPLACE "*" "_mul_" case_name "${index}")
+        string(REPLACE "/" "_div_" case_name "${case_name}")
+        string(REPLACE "%" "_mod_" case_name "${case_name}")
         string(MAKE_C_IDENTIFIER "${case_name}" case_name)
-        if(index STREQUAL "8*i+j" OR index STREQUAL "n*i")
-            set(reason "index contains multiple or runtime-dependent terms")
-        elseif(index STREQUAL "i/2" OR index STREQUAL "i*i")
-            set(reason "expression is not a constant or bound IV plus constant")
+        if(index STREQUAL "n*i")
+            set(reason "runtime-dependent coefficient")
+        elseif(index STREQUAL "i*i")
+            set(reason "nonlinear recurrence")
+        elseif(index STREQUAL "i/2")
+            set(reason "expression is outside the affine grammar")
+        elseif(index STREQUAL "i%2")
+            # SCEV can lower remainder to a narrow recurrence; its rejection
+            # suffix depends on the proved domain. Require the common prefix.
+            set(reason "")
         else()
-            set(reason "index coefficient differs from emitted IV")
+            set(reason "index may wrap or narrow")
         endif()
         add_test(NAME "LegacyAffineRejection_${case_name}" COMMAND ${CMAKE_COMMAND}
             "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-affine-${case_name}"
@@ -124,6 +137,17 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
             "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy_affine_rejected.c"
             "-DINDEX=${index}"
             "-DREASON=${reason}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_legacy_affine.cmake")
+    endforeach()
+    foreach(index "(long)p" "(long)p & 7" "(long)p * 2" "(long)(p+i)" "(long)p+i")
+        string(MAKE_C_IDENTIFIER "${index}" case_name)
+        add_test(NAME "LegacyPointerIndexRejection_${case_name}" COMMAND ${CMAKE_COMMAND}
+            "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-pointer-index-${case_name}"
+            "-DCLANG=${YARDA_INDEX_CLANG}" "-DOPT=${YARDA_REGION_OPT}"
+            "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy_pointer_index_rejected.c"
+            "-DINDEX=${index}"
+            "-DREASON=expression is outside the affine grammar"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_legacy_affine.cmake")
     endforeach()
     add_test(NAME LegacyRegionRejection COMMAND ${CMAKE_COMMAND}

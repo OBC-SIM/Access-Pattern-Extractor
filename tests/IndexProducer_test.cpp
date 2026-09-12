@@ -25,12 +25,15 @@ std::string structPointerIr(const std::string & expression)
   return source;
 }
 
-TEST(IndexProducer, RejectsScaledStructPointerIndexInsteadOfDroppingIt)
+TEST(IndexProducer, PreservesScaledStructPointerIndexBeforeFieldSelection)
 {
   IndexIr ir(structPointerIr("%index = mul i64 %i, 2"));
   auto * gep = llvm::cast<llvm::GEPOperator>(ir.value("p"));
-  EXPECT_THROW(describeGepAccess(gep, ir.evolution(), {}, {}),
-               std::invalid_argument);
+  const auto result = describeGepAccess(gep, ir.evolution(), {}, {});
+  EXPECT_EQ(result.indices, (std::vector<std::string>{"2*i"}));
+  ASSERT_EQ(result.access_path.size(), 2U);
+  EXPECT_EQ(result.access_path[0].value, "2*i");
+  EXPECT_EQ(result.access_path[1].kind, "field");
 }
 
 TEST(IndexProducer, PreservesStructPointerIndexBeforeFieldSelection)
@@ -55,9 +58,9 @@ TEST(IndexProducer, ConstantStructPointerStepIsNotAFieldNumber)
 
 TEST(IndexProducer, LoadedLoopTemporaryCannotBorrowAnInductionDebugName)
 {
-  auto source = indexLoop(
-    "%scaled = mul i64 %i, 2\n"
-    "store i64 %scaled, i64* %slot\n%index = load i64, i64* %slot");
+  auto source =
+    indexLoop("%scaled = mul i64 %i, 2\n"
+              "store i64 %scaled, i64* %slot\n%index = load i64, i64* %slot");
   const auto entry = source.find("entry: br");
   source.replace(entry, 7, "entry: %slot = alloca i64\n");
   IndexIr ir(source);

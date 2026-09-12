@@ -159,20 +159,30 @@ field offset/type 정보가 유지되는지 검증합니다.
 
 ### Legacy 인덱스의 지원 범위
 
-Legacy plugin은 인덱스를 정수 상수, 출력 `Loop`에 결속된 IV,
-`IV+정수` 또는 `IV-정수`로 정확히 표현할 수 있을 때만 변환합니다.
-`a[i+1]`, step 2의 `a[i]`, 음수 step의 `a[i-1]`, 상수로 단순화되는
-`a[0*i+3]`과 실제 다차원 `A[i][j]`를 보존합니다. 기존 scalar formal과
-`ape.inline` 인자 치환도 유지하며, inline 정수 인자는 같은 판정을 거칩니다.
+Legacy plugin은 인덱스를 `상수 + Σ(정수 계수 × 변수)`로 정확히 증명할 수
+있을 때 변환합니다. 변수는 출력 `Loop`에 결속된 IV와 검증된 scalar formal입니다.
+`2*i`, `i*2`, `2*i*2`, `2*(i*2)`, `i*(2*2)`, `2*i+1`, `7-i`, `8*i+j`를
+지원하며, 비영 시작값·음수 step도 실제 출력 IV를 기준으로 계산합니다.
+`ape.inline` 실제 인자에도 같은 판정을 적용합니다.
 Unsigned formal은 zero extension과 inline 전달 관계에 맞춰 호출 인자도 같은
 정수 의미로 기록합니다. 예를 들어 `unsigned char` 값 255는 `-1`로 치환하지
 않습니다. 하나의 formal에 signed/unsigned cast가 충돌하거나 값 보존을 증명할
 수 없는 narrowing이 필요하면 거부합니다.
+Cast 증명은 정수 `trunc/sext/zext`를 대상으로 합니다. 포인터를 정수로 바꾸는
+SCEV `ptrtoint`가 남은 인덱스는 `unsupported affine index` 진단으로 거부합니다.
 
-`a[2*i]`, `a[i*2]`, `a[2*i*2]`, `a[7-i]`, 단일 인덱스 `a[8*i+j]`, runtime 계수, 나눗셈과
-비선형 식은 `unsupported affine index` 진단으로 거부합니다. 계수·상수항을
+Runtime 계수 `n*i`, 나눗셈·나머지와 비선형 식은 정확한 선형식으로 증명되지
+않으면 `unsupported affine index` 진단으로 거부합니다. 계수·상수항을
 버리거나 평탄화 식을 여러 배열 차원으로 바꾸지 않습니다. Struct GEP의 첫
 피연산자는 필드 번호가 아니라 포인터 인덱스로 해석합니다.
+
+출력은 괄호와 공백 없는 상수·식별자·`정수*식별자`의 합/차입니다. 식별자는
+`[A-Za-z_][A-Za-z0-9_]*`이며, 항은 이름순으로 정렬하고 중복·0항을 정리합니다.
+상수항은 마지막에 기록합니다. C의 `2*i*2`는 `4*i`, `7-i`는 `-i+7`로
+출력합니다. `indices`와 `access_path`는 같은 식을 사용하며 `a[8*i+j]`는
+인덱스 하나, `A[i][j]`는 두 개를 유지합니다. 계수·상수·최종 값은 signed int64
+범위여야 합니다. Scalar formal 산술도 원래 폭에서 값 보존을 증명해야 하므로
+모든 runtime 인자 수식이 지원되는 것은 아닙니다.
 
 지원 Loop는 header의 정수 비교로 제어되며, 동일 PHI의 상수 start·bound·
 0이 아닌 step과 정수 범위를 증명할 수 있어야 합니다. `bound`는 반복 횟수가
@@ -190,8 +200,11 @@ Inline 함수가 있는 모듈은 IV 이름을 함수별로 구분하고 모듈 
 변환 오류는 plugin의 nonzero 종료로 전달하며 LAT 출력 파일을 열기 전에
 발생합니다. 새 LAT를 남기지 않고 기존 LAT 내용을 보존합니다. 과거에 잘못 생성된
 LAT에는 원래 계수가 남아 있지 않으므로, 이 수정 이후 원본 C/IR에서 재생성해야 합니다.
-LAT v2 schema와 backend의 수식 문법은 동일합니다. 일반 정수 계수·다중 변수의
-계산 지원은 후속 H2-B 범위입니다.
+LAT v2 JSON 구조를 유지하지만, 새 계수·다중 변수 식에는 H2-B C++ reader가
+필요합니다. 구 reader는 문자열 trace에서 식을 그대로 반환하고 주소 분석에서
+거부합니다. 구 reader는 schema 버전도 검사하지 않으므로 버전 번호만 올려
+호환성을 보장할 수 없습니다. 새 입력에는 frontend/backend를 함께 갱신하세요.
+R2 strict 구간의 scaled-index 거부 계약은 유지합니다.
 
 `YardaIndexTests`와 `LegacyAffineRejection_*`는 region 옵션 OFF에서도 실행됩니다.
 부모 저장소의 `yarda_affine_index_tests`는 같은 C의 debug/no-debug LAT와 ET_EXEC을

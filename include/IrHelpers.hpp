@@ -49,7 +49,7 @@ std::string getInductionVarName(llvm::Loop * L, llvm::ScalarEvolution & SE,
 /**
  * @brief GEP 인덱스 하나를 손실 없이 LAT 인덱스 하나로 변환한다.
  *
- * 정수 상수(0 포함), 결속된 IV와 상수 offset, 기존 scalar formal을 보존한다.
+ * 정수 상수(0 포함), 결속된 IV와 검증된 scalar formal의 선형식을 보존한다.
  * 계수와 복합 항을 버리거나 하나의 식을 여러 차원으로 분리하지 않는다.
  *
  * @param Idx    GEP 인덱스 피연산자
@@ -63,7 +63,7 @@ std::vector<std::string> resolveIndex(llvm::Value * Idx,
                                       const NameMap & names);
 
 /**
- * @brief GEP 연산의 모든 인덱스를 변수 이름 목록으로 변환한다.
+ * @brief GEP 연산의 각 인덱스를 손실 없는 affine 식으로 변환한다.
  *
  * GetElementPtrInst(명령어 GEP)와 ConstantExpr GEP(전역 배열 상수 접근)를
  * 모두 처리하기 위해 GEPOperator를 인자로 받는다.
@@ -77,9 +77,10 @@ std::vector<std::string> resolveIndex(llvm::Value * Idx,
  * @return GEP chain의 각 인덱스에 대응하는 순서 있는 값 목록.
  * @throws std::invalid_argument 하나라도 손실 없이 해석할 수 없는 경우.
  */
-std::vector<std::string> getIndexVars(
-  llvm::GEPOperator * GEP, llvm::ScalarEvolution & SE, const NameMap & names,
-  const llvm::Instruction * useSite = nullptr);
+std::vector<std::string>
+getIndexVars(llvm::GEPOperator * GEP, llvm::ScalarEvolution & SE,
+             const NameMap & names,
+             const llvm::Instruction * useSite = nullptr);
 
 /**
  * @brief 포인터 피연산자에서 배열/변수의 기반 이름을 추출한다.

@@ -46,51 +46,50 @@ TEST(IndexResolution, PreservesZeroCoefficientAsConstant)
   EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"3"}));
 }
 
-TEST(IndexResolution, RejectsScaledInduction)
+TEST(IndexResolution, PreservesScaledInduction)
 {
   IndexIr ir(indexLoop("%index = mul i64 %i, 2"));
-  expectRejected(ir);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*i"}));
 }
 
-TEST(IndexResolution, RejectsConstantBeforeInduction)
+TEST(IndexResolution, PreservesConstantBeforeInduction)
 {
   IndexIr ir(indexLoop("%index = mul i64 2, %i"));
-  expectRejected(ir);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*i"}));
 }
 
-TEST(IndexResolution, RejectsChainedConstantMultiplication)
+TEST(IndexResolution, PreservesChainedConstantMultiplication)
 {
-  IndexIr ir(
-    indexLoop("%twice = mul i64 2, %i\n"
-              "%index = mul i64 %twice, 2"));
-  expectRejected(ir);
+  IndexIr ir(indexLoop("%twice = mul i64 2, %i\n"
+                       "%index = mul i64 %twice, 2"));
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"4*i"}));
 }
 
-TEST(IndexResolution, RejectsReassociatedConstantMultiplication)
+TEST(IndexResolution, PreservesReassociatedConstantMultiplication)
 {
-  IndexIr ir(
-    indexLoop("%factor = mul i64 2, 2\n"
-              "%index = mul i64 %i, %factor"));
-  expectRejected(ir);
+  IndexIr ir(indexLoop("%factor = mul i64 2, 2\n"
+                       "%index = mul i64 %i, %factor"));
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"4*i"}));
 }
 
-TEST(IndexResolution, RejectsScaledOffsetWithNonzeroStart)
+TEST(IndexResolution, PreservesScaledOffsetWithNonzeroStart)
 {
   IndexIr ir(indexLoop("%twice = mul i64 %i, 2\n%index = add i64 %twice, 1",
                        "2", "8", "2"));
-  expectRejected(ir);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*i+1"}));
 }
 
-TEST(IndexResolution, RejectsNegativeCoefficient)
+TEST(IndexResolution, PreservesNegativeCoefficient)
 {
   IndexIr ir(indexLoop("%index = sub i64 7, %i"));
-  expectRejected(ir);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"-i+7"}));
 }
 
 TEST(IndexResolution, DebugNameCannotHideScaledTemporary)
 {
   IndexIr ir(indexLoop("%index = mul i64 %i, 2"));
-  expectRejected(ir, {{ir.value("i"), "i"}, {ir.value("index"), "t"}});
+  EXPECT_EQ(ir.resolve({{ir.value("i"), "i"}, {ir.value("index"), "t"}}),
+            (std::vector<std::string>{"2*i"}));
 }
 
 TEST(IndexResolution, DebugNameCannotReplaceProvenOffset)
