@@ -1,0 +1,42 @@
+foreach(required WORK_DIR CLANG OPT PLUGIN SOURCE INDEX REASON)
+    if(NOT DEFINED ${required})
+        message(FATAL_ERROR "${required} is required")
+    endif()
+endforeach()
+file(MAKE_DIRECTORY "${WORK_DIR}")
+foreach(debug -g -g0)
+    set(ir "${WORK_DIR}/reject.ll")
+    set(lat "${WORK_DIR}/reject_ape.json")
+    execute_process(COMMAND "${CLANG}" -O0 -Xclang -disable-O0-optnone
+        "${debug}" "-DH2_INDEX=${INDEX}" -emit-llvm -S "${SOURCE}" -o "${ir}"
+        RESULT_VARIABLE status ERROR_VARIABLE diagnostic)
+    if(NOT status EQUAL 0)
+        message(FATAL_ERROR "fixture compile failed: ${diagnostic}")
+    endif()
+    foreach(existing FALSE TRUE)
+        file(REMOVE "${lat}")
+        if(existing)
+            file(WRITE "${lat}" "sentinel LAT must survive\n")
+        endif()
+        execute_process(COMMAND "${OPT}" "-load-pass-plugin=${PLUGIN}"
+            "-passes=function(mem2reg),loop-simplify,loop-annotated-trace"
+            "${ir}" -S -o "${WORK_DIR}/output.ll"
+            WORKING_DIRECTORY "${WORK_DIR}"
+            RESULT_VARIABLE status ERROR_VARIABLE diagnostic)
+        if(NOT status EQUAL 1 OR
+           NOT diagnostic MATCHES "unsupported affine index: ${REASON}")
+            message(FATAL_ERROR "index ${INDEX}, ${debug}, existing=${existing}: ${status}: ${diagnostic}")
+        endif()
+        if(existing)
+            file(READ "${lat}" contents)
+            if(NOT contents STREQUAL "sentinel LAT must survive\n")
+                message(FATAL_ERROR "existing LAT was modified")
+            endif()
+        elseif(EXISTS "${lat}")
+            message(FATAL_ERROR "rejected module left partial LAT")
+        endif()
+        if(EXISTS "${WORK_DIR}/output.ll")
+            message(FATAL_ERROR "rejected pass left host output")
+        endif()
+    endforeach()
+endforeach()

@@ -91,6 +91,13 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     )
     add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
     llvm_map_components_to_libnames(LLVM_REGION_TEST_LIBS asmparser passes)
+    add_executable(YardaIndexTests tests/IndexResolution_test.cpp
+        tests/IndexRange_test.cpp tests/IndexBinding_test.cpp
+        tests/IndexFormal_test.cpp tests/IndexScope_test.cpp
+        tests/IndexProducer_test.cpp tests/helpers/RegionTestMain.cpp)
+    target_link_libraries(YardaIndexTests PRIVATE
+        LatBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
+    add_test(NAME YardaIndexTests COMMAND YardaIndexTests)
     add_executable(YardaRegionIrTests
         tests/helpers/RegionTestMain.cpp
         tests/AnalysisRegion_test.cpp)
@@ -98,6 +105,27 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         LatBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
     add_test(NAME YardaRegionIrTests COMMAND YardaRegionIrTests)
     find_program(YARDA_REGION_OPT NAMES opt-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
+    find_program(YARDA_INDEX_CLANG NAMES clang-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
+    foreach(index "2*i" "i*2" "2*i*2" "2*(i*2)" "i*(2*2)"
+                  "2*i+1" "7-i" "8*i+j" "t" "n*i" "i/2" "i*i")
+        string(REPLACE "*" "_mul_" case_name "${index}")
+        string(MAKE_C_IDENTIFIER "${case_name}" case_name)
+        if(index STREQUAL "8*i+j" OR index STREQUAL "n*i")
+            set(reason "index contains multiple or runtime-dependent terms")
+        elseif(index STREQUAL "i/2" OR index STREQUAL "i*i")
+            set(reason "expression is not a constant or bound IV plus constant")
+        else()
+            set(reason "index coefficient differs from emitted IV")
+        endif()
+        add_test(NAME "LegacyAffineRejection_${case_name}" COMMAND ${CMAKE_COMMAND}
+            "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-affine-${case_name}"
+            "-DCLANG=${YARDA_INDEX_CLANG}" "-DOPT=${YARDA_REGION_OPT}"
+            "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy_affine_rejected.c"
+            "-DINDEX=${index}"
+            "-DREASON=${reason}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_legacy_affine.cmake")
+    endforeach()
     add_test(NAME LegacyRegionRejection COMMAND ${CMAKE_COMMAND}
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-region-rejection"
         "-DOPT=${YARDA_REGION_OPT}"

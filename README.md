@@ -157,6 +157,46 @@ base나 legacy access처럼 canonical storage를 정적으로 식별할 수 없�
 `o.items[i].x`, `o.items[i].y`, `access_path`, `metadata.structs`의
 field offset/type 정보가 유지되는지 검증합니다.
 
+### Legacy 인덱스의 지원 범위
+
+Legacy plugin은 인덱스를 정수 상수, 출력 `Loop`에 결속된 IV,
+`IV+정수` 또는 `IV-정수`로 정확히 표현할 수 있을 때만 변환합니다.
+`a[i+1]`, step 2의 `a[i]`, 음수 step의 `a[i-1]`, 상수로 단순화되는
+`a[0*i+3]`과 실제 다차원 `A[i][j]`를 보존합니다. 기존 scalar formal과
+`ape.inline` 인자 치환도 유지하며, inline 정수 인자는 같은 판정을 거칩니다.
+Unsigned formal은 zero extension과 inline 전달 관계에 맞춰 호출 인자도 같은
+정수 의미로 기록합니다. 예를 들어 `unsigned char` 값 255는 `-1`로 치환하지
+않습니다. 하나의 formal에 signed/unsigned cast가 충돌하거나 값 보존을 증명할
+수 없는 narrowing이 필요하면 거부합니다.
+
+`a[2*i]`, `a[i*2]`, `a[2*i*2]`, `a[7-i]`, 단일 인덱스 `a[8*i+j]`, runtime 계수, 나눗셈과
+비선형 식은 `unsupported affine index` 진단으로 거부합니다. 계수·상수항을
+버리거나 평탄화 식을 여러 배열 차원으로 바꾸지 않습니다. Struct GEP의 첫
+피연산자는 필드 번호가 아니라 포인터 인덱스로 해석합니다.
+
+지원 Loop는 header의 정수 비교로 제어되며, 동일 PHI의 상수 start·bound·
+0이 아닌 step과 정수 범위를 증명할 수 있어야 합니다. `bound`는 반복 횟수가
+아닌 배타적 종료 값입니다. 알 수 없는 값에 0/1을 대신 넣거나 loop를 생략하지
+않습니다. Narrowing과 zero extension은 값이 보존됨을 증명한 경우만 허용하고,
+signed/unsigned 경계나 wrap을 증명할 수 없으면 거부합니다.
+
+Debug 이름은 수식의 동치성을 증명하지 않습니다. 상수와 충돌하는 숫자 이름,
+중첩 IV나 formal과 겹치는 이름은 정규화하며, debug 정보가 없는 scalar formal은 `argN`으로
+표현합니다. 일반 임시 변수의 이름을 formal이나 IV의 이름으로 대신 사용하지 않습니다.
+Inline 함수가 있는 모듈은 IV 이름을 함수별로 구분하고 모듈 내 formal 이름과의
+충돌도 피합니다. 메모리 접근·inline 호출이 해당 IV의 Loop scope 밖에 있으면
+미결속 IV 이름을 출력하지 않고 거부합니다.
+
+변환 오류는 plugin의 nonzero 종료로 전달하며 LAT 출력 파일을 열기 전에
+발생합니다. 새 LAT를 남기지 않고 기존 LAT 내용을 보존합니다. 과거에 잘못 생성된
+LAT에는 원래 계수가 남아 있지 않으므로, 이 수정 이후 원본 C/IR에서 재생성해야 합니다.
+LAT v2 schema와 backend의 수식 문법은 동일합니다. 일반 정수 계수·다중 변수의
+계산 지원은 후속 H2-B 범위입니다.
+
+`YardaIndexTests`와 `LegacyAffineRejection_*`는 region 옵션 OFF에서도 실행됩니다.
+부모 저장소의 `yarda_affine_index_tests`는 같은 C의 debug/no-debug LAT와 ET_EXEC을
+사용해 독립적인 byte offset·폭·operation·ordinal 및 두 캐시 oracle를 검증합니다.
+
 ---
 
 ## 빌드
