@@ -1,11 +1,33 @@
 #include <gtest/gtest.h>
 
+#include "../src/index/ScalarFormal.hpp"
 #include "helpers/IndexIrFixture.hpp"
 
 namespace lat::test
 {
 namespace
 {
+
+TEST(IndexFormal, DoesNotBindPointerParameterAsInteger)
+{
+  IndexIr ir(R"(define void @kernel(i32* %p) {
+    entry: ret void
+    })");
+  auto * argument = ir.module->getFunction("kernel")->getArg(0);
+  EXPECT_FALSE(index::resolveFormalValue(argument, {}));
+}
+
+TEST(IndexFormal, DoesNotBindPointerParameterLoadAsInteger)
+{
+  IndexIr ir(R"(define void @kernel(i32* %p) {
+    entry:
+      %slot = alloca i32*
+      store i32* %p, i32** %slot
+      %loaded = load i32*, i32** %slot
+      ret void
+    })");
+  EXPECT_FALSE(index::resolveFormalValue(ir.value("loaded"), {}));
+}
 
 TEST(IndexFormal, PreservesUnsignedParameterExtension)
 {

@@ -82,9 +82,25 @@ bool usesUnsignedFormal(Argument & argument)
   return unsignedFormal(argument, visited);
 }
 
-std::optional<std::string> resolveFormalIndex(Value * value,
-                                              const NameMap & names,
-                                              bool unsignedValue)
+std::optional<FormalValue> resolveFormalValue(Value * value,
+                                              const NameMap & names)
+{
+  auto * argument = scalarArgument(value);
+  if (!argument || !argument->getType()->isIntegerTy()) return std::nullopt;
+  const auto width = argument->getType()->getIntegerBitWidth();
+  if (width > 64) rejectCast();
+  const bool unsignedValue = usesUnsignedFormal(*argument);
+  auto minimum =
+    unsignedValue ? APInt(128, 0) : APInt::getSignedMinValue(width).sext(128);
+  auto maximum = unsignedValue ? APInt::getMaxValue(width).zext(128)
+                               : APInt::getSignedMaxValue(width).sext(128);
+  if (!preserves(minimum, maximum, 64, false)) rejectCast();
+  return FormalValue{getValueName(argument, names), std::move(minimum),
+                     std::move(maximum)};
+}
+
+std::optional<std::string>
+resolveFormalIndex(Value * value, const NameMap & names, bool unsignedValue)
 {
   std::vector<CastInst *> extensions;
   auto * scalar = value;
@@ -94,17 +110,10 @@ std::optional<std::string> resolveFormalIndex(Value * value,
     extensions.push_back(extension);
     scalar = extension->getOperand(0);
   }
-  auto * argument = scalarArgument(scalar);
-  if (!argument) return std::nullopt;
-  const auto width = argument->getType()->getIntegerBitWidth();
-  if (width > 64) rejectCast();
-  const bool unsignedFormal = usesUnsignedFormal(*argument);
-  const auto minimum =
-    unsignedFormal ? APInt(128, 0) : APInt::getSignedMinValue(width).sext(128);
-  const auto maximum = unsignedFormal
-                         ? APInt::getMaxValue(width).zext(128)
-                         : APInt::getSignedMaxValue(width).sext(128);
-  if (!preserves(minimum, maximum, 64, false)) rejectCast();
+  const auto formal = resolveFormalValue(scalar, names);
+  if (!formal) return std::nullopt;
+  const auto & minimum = formal->minimum;
+  const auto & maximum = formal->maximum;
   for (auto it = extensions.rbegin(); it != extensions.rend(); ++it)
     if (!preserves(minimum, maximum, (*it)->getSrcTy()->getIntegerBitWidth(),
                    isa<ZExtInst>(*it)))
@@ -112,7 +121,7 @@ std::optional<std::string> resolveFormalIndex(Value * value,
   if (!preserves(minimum, maximum, value->getType()->getIntegerBitWidth(),
                  unsignedValue))
     rejectCast();
-  return getValueName(argument, names);
+  return formal->name;
 }
 
 }  // namespace lat::index
