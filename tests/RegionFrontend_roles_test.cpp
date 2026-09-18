@@ -1,6 +1,6 @@
 #include "helpers/RegionTestSupport.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -68,4 +68,4 @@ TEST(RegionRoles, RejectsWholeRootControlWithAndWithoutRegion)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

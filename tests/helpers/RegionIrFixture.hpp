@@ -7,7 +7,7 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/SourceMgr.h"
 
-namespace lat::test
+namespace map::test
 {
 
 inline constexpr char defaultRegionIr[] = R"(
@@ -61,4 +61,4 @@ struct RegionIr
   }
 };
 
-}  // namespace lat::test
+}  // namespace map::test

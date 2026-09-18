@@ -2,7 +2,7 @@
 
 #include "IrHelpers.hpp"
 
-namespace lat::index
+namespace map::index
 {
 
 /**
@@ -23,4 +23,4 @@ std::string resolveSingleIndex(llvm::Value * value,
                                const llvm::Instruction * useSite = nullptr,
                                bool unsignedValue = false);
 
-}  // namespace lat::index
+}  // namespace map::index

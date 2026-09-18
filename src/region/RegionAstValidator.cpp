@@ -9,7 +9,7 @@
 #include "clang/AST/Expr.h"
 #include "clang/Basic/SourceManager.h"
 
-namespace lat::region
+namespace map::region
 {
 namespace
 {
@@ -208,4 +208,4 @@ makeRegionAstValidator(SourceRegions & source)
   return std::make_unique<Validator>(source);
 }
 
-}  // namespace lat::region
+}  // namespace map::region

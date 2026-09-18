@@ -2,9 +2,9 @@
 
 LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하는 LLVM Pass 플러그인입니다.
 
-[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `ape.analyze` / `ape.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/LAT v2 JSON을 출력합니다.
+[Yet-Another-Reuse-Distance-Analyzer](https://github.com/OBC-SIM/Yet-Another-Reuse-Distance-Analyzer)의 C++ 프론트엔드로 사용되며, `ape.analyze` / `ape.inline` 어노테이션 기반으로 분석 대상 함수를 필터링해 APE/MAP v2 JSON을 출력합니다.
 
-함수 내부 구간을 선택하는 선택적 C++ 실행 파일 `yarda_region_lat`도 제공합니다.
+함수 내부 구간을 선택하는 선택적 C++ 실행 파일 `yarda_region_map`도 제공합니다.
 `APE_ANALYZE_BEGIN` / `APE_ANALYZE_END` 문법, 고정 Clang 14 파이프라인과 빌드·사용법은
 [분석 구간 문서](docs/analysis-regions.md)를 참고하세요.
 
@@ -12,7 +12,7 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 ## 출력 형식
 
-`<name>_g_ape.json` — APE/LAT v2 JSON.
+`<name>_g_ape.json` — APE/MAP v2 JSON.
 
 > **Breaking change:** v2부터 JSON root는 function 배열이 아니라
 > `schema_version`, `metadata`, `functions`를 갖는 object입니다.
@@ -68,7 +68,7 @@ LLVM IR에서 루프·배열·스칼라 접근 패턴을 정적으로 추출하�
 
 | 필드 | 설명 |
 |---|---|
-| `schema_version` | APE/LAT schema version. 현재 값은 `2` |
+| `schema_version` | APE/MAP schema version. 현재 값은 `2` |
 | `metadata` | access node가 참조하는 object와 structure layout metadata |
 | `functions` | 분석된 함수 wrapper 배열 |
 
@@ -197,17 +197,17 @@ Inline 함수가 있는 모듈은 IV 이름을 함수별로 구분하고 모듈 
 충돌도 피합니다. 메모리 접근·inline 호출이 해당 IV의 Loop scope 밖에 있으면
 미결속 IV 이름을 출력하지 않고 거부합니다.
 
-변환 오류는 plugin의 nonzero 종료로 전달하며 LAT 출력 파일을 열기 전에
-발생합니다. 새 LAT를 남기지 않고 기존 LAT 내용을 보존합니다. 과거에 잘못 생성된
-LAT에는 원래 계수가 남아 있지 않으므로, 이 수정 이후 원본 C/IR에서 재생성해야 합니다.
-LAT v2 JSON 구조를 유지하지만, 새 계수·다중 변수 식에는 H2-B C++ reader가
+변환 오류는 plugin의 nonzero 종료로 전달하며 MAP 출력 파일을 열기 전에
+발생합니다. 새 MAP를 남기지 않고 기존 MAP 내용을 보존합니다. 과거에 잘못 생성된
+MAP에는 원래 계수가 남아 있지 않으므로, 이 수정 이후 원본 C/IR에서 재생성해야 합니다.
+MAP v2 JSON 구조를 유지하지만, 새 계수·다중 변수 식에는 H2-B C++ reader가
 필요합니다. 구 reader는 문자열 trace에서 식을 그대로 반환하고 주소 분석에서
 거부합니다. 구 reader는 schema 버전도 검사하지 않으므로 버전 번호만 올려
 호환성을 보장할 수 없습니다. 새 입력에는 frontend/backend를 함께 갱신하세요.
 R2 strict 구간의 scaled-index 거부 계약은 유지합니다.
 
 `YardaIndexTests`와 `LegacyAffineRejection_*`는 region 옵션 OFF에서도 실행됩니다.
-부모 저장소의 `yarda_affine_index_tests`는 같은 C의 debug/no-debug LAT와 ET_EXEC을
+부모 저장소의 `yarda_affine_index_tests`는 같은 C의 debug/no-debug MAP와 ET_EXEC을
 사용해 독립적인 byte offset·폭·operation·ordinal 및 두 캐시 oracle를 검증합니다.
 
 ---
@@ -225,8 +225,8 @@ cmake --build build
 ```
 
 빌드 산출물:
-- `build/libLoopAnnotatedTrace.so` — opt에 로드할 Pass 플러그인
-- `build/LoopAnnotatedTraceTests` — GTest 바이너리
+- `build/libMemoryAccessPatterns.so` — opt에 로드할 Pass 플러그인
+- `build/MemoryAccessPatternsTests` — GTest 바이너리
 
 ---
 
@@ -264,7 +264,7 @@ clang-14 -O0 -Xclang -disable-O0-optnone -g \
          -emit-llvm -S -o <name>_g.ll <name>.c
 
 # 2. Pass 실행 → APE JSON 생성
-opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
+opt-14 -load-pass-plugin ./build/libMemoryAccessPatterns.so \
        -passes=function\(mem2reg\),loop-simplify,loop-annotated-trace \
        <name>_g.ll -o /dev/null
 ```
@@ -278,7 +278,7 @@ opt-14 -load-pass-plugin ./build/libLoopAnnotatedTrace.so \
 ```
 
 - `APE_ANALYZE` — 분석 root 함수. 어노테이션이 없으면 모든 함수를 분석합니다.
-- `APE_INLINE` — call site에 LAT 노드로 보존할 helper 함수.
+- `APE_INLINE` — call site에 MAP 노드로 보존할 helper 함수.
 - `yard_analyze.h`의 `YARD_ANALYZE` / `YARD_INLINE`은 기존 fixture 호환을
   위해 같은 annotation으로 유지됩니다.
 
@@ -315,7 +315,7 @@ void matmul_params_kernel(void)
 ```bash
 ctest --test-dir build
 # 또는
-./build/LoopAnnotatedTraceTests
+./build/MemoryAccessPatternsTests
 ```
 
 | 테스트 스위트 | 내용 |

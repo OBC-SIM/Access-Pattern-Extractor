@@ -5,7 +5,7 @@
 
 #include "LoopInduction.hpp"
 
-namespace lat::index
+namespace map::index
 {
 
 /** @brief One proved variable domain and its constant coefficient. */
@@ -24,21 +24,21 @@ struct AffineExpression
 };
 
 /**
- * @brief Reject an unproved index without producing a partial LAT.
+ * @brief Reject an unproved index without producing a partial MAP.
  * @param reason Specific diagnostic suffix.
  * @return Never returns; throws std::invalid_argument.
  */
 [[noreturn]] void rejectAffine(const char * reason);
 
 /**
- * @brief Convert only values representable in the LAT signed integer domain.
+ * @brief Convert only values representable in the MAP signed integer domain.
  * @param value Borrowed signed APInt.
  * @return Exact int64; throws on overflow.
  */
 int64_t affineInteger(const llvm::APInt & value);
 
 /**
- * @brief Embed a signed LAT integer in the checked intermediate domain.
+ * @brief Embed a signed MAP integer in the checked intermediate domain.
  * @param value Signed int64 value.
  * @return Signed 128-bit integer.
  */
@@ -63,7 +63,7 @@ std::pair<llvm::APInt, llvm::APInt>
 affineRange(const AffineExpression & expression);
 
 /**
- * @brief Require the expression to preserve signed IR and LAT values.
+ * @brief Require the expression to preserve signed IR and MAP values.
  * @param expression Borrowed normalized expression.
  * @param width Original IR integer width.
  * @return Nothing; throws on possible wrap or narrowing.
@@ -73,8 +73,8 @@ void checkAffineRange(const AffineExpression & expression, unsigned width);
 /**
  * @brief Emit sorted terms with the constant last and no zero coefficients.
  * @param expression Borrowed normalized expression.
- * @return Canonical restricted LAT affine string.
+ * @return Canonical restricted MAP affine string.
  */
 std::string formatAffine(const AffineExpression & expression);
 
-}  // namespace lat::index
+}  // namespace map::index

@@ -8,7 +8,7 @@
 #include "clang/Lex/Pragma.h"
 #include "clang/Lex/Preprocessor.h"
 
-namespace lat::region
+namespace map::region
 {
 namespace
 {
@@ -85,4 +85,4 @@ void registerRegionPragmas(clang::Preprocessor & pp, SourceRegions & source)
   pp.AddPragmaHandler(new BoundaryPragma(false, source));
 }
 
-}  // namespace lat::region
+}  // namespace map::region

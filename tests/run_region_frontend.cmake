@@ -12,7 +12,7 @@ execute_process(COMMAND "${COMPILER}" "${source}" "${output}"
     RESULT_VARIABLE status ERROR_VARIABLE diagnostic)
 file(READ "${output}" second)
 if(NOT status EQUAL 0 OR NOT first STREQUAL second)
-    message(FATAL_ERROR "region LAT is not repeatable: ${diagnostic}")
+    message(FATAL_ERROR "region MAP is not repeatable: ${diagnostic}")
 endif()
 
 # An invalid invocation must preserve the last successfully published document.
@@ -59,7 +59,7 @@ if(UNIX)
         "${COMPILER}" "${source}" "${WORK_DIR}/limited.json"
         RESULT_VARIABLE status ERROR_VARIABLE diagnostic)
     file(GLOB leftovers "${WORK_DIR}/limited.json*")
-    if(NOT status EQUAL 1 OR leftovers OR NOT diagnostic MATCHES "cannot write LAT")
+    if(NOT status EQUAL 1 OR leftovers OR NOT diagnostic MATCHES "cannot write MAP")
         message(FATAL_ERROR "output failure did not cleanly reject publication: ${status}: ${diagnostic}")
     endif()
 endif()

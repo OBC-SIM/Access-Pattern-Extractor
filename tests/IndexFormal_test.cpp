@@ -3,7 +3,7 @@
 #include "../src/index/ScalarFormal.hpp"
 #include "helpers/IndexIrFixture.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -85,4 +85,4 @@ TEST(IndexFormal, RejectsConflictingSignedAndUnsignedUses)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "LatModuleBuilder.hpp"
+#include "MapModuleBuilder.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -18,23 +18,23 @@ using namespace llvm;
 namespace
 {
 
-struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass>
+struct MemoryAccessPatternsPass : public PassInfoMixin<MemoryAccessPatternsPass>
 {
   PreservedAnalyses run(Module & M, ModuleAnalysisManager & MAM)
   {
-    if (lat::hasRegionTransport(M))
+    if (map::hasRegionTransport(M))
     {
       // LLVM 14's default error handler exits before output destructors run.
       sys::RunInterruptHandlers();
       M.getContext().emitError(
-        "[LoopAnnotatedTrace] region transport requires yarda_region_lat");
+        "[MemoryAccessPatterns] region transport requires yarda_region_map");
       return PreservedAnalyses::all();
     }
     llvm::json::Object root;
     std::optional<std::string> failure;
     try
     {
-      root = lat::buildLatModule(M, MAM);
+      root = map::buildMapModule(M, MAM);
     }
     catch (const std::invalid_argument & error)
     {
@@ -44,7 +44,7 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass>
     {
       // Finish unwinding the C++ exception before a host handler can exit.
       sys::RunInterruptHandlers();
-      M.getContext().emitError(llvm::Twine("[LoopAnnotatedTrace] ") + *failure);
+      M.getContext().emitError(llvm::Twine("[MemoryAccessPatterns] ") + *failure);
       return PreservedAnalyses::all();
     }
     llvm::StringRef stem = llvm::sys::path::stem(M.getModuleIdentifier());
@@ -53,29 +53,29 @@ struct LoopAnnotatedTracePass : public PassInfoMixin<LoopAnnotatedTracePass>
     raw_fd_ostream OS(filename, EC, sys::fs::OF_Text);
     if (EC)
     {
-      errs() << "[LoopAnnotatedTrace] cannot open " << filename << ": "
+      errs() << "[MemoryAccessPatterns] cannot open " << filename << ": "
              << EC.message() << "\n";
       return PreservedAnalyses::all();
     }
 
     OS << llvm::json::Value(std::move(root));
-    errs() << "[LoopAnnotatedTrace] wrote " << filename << "\n";
+    errs() << "[MemoryAccessPatterns] wrote " << filename << "\n";
     return PreservedAnalyses::all();
   }
 };
 
 }  // namespace
 
-llvm::PassPluginLibraryInfo getLoopAnnotatedTracePluginInfo()
+llvm::PassPluginLibraryInfo getMemoryAccessPatternsPluginInfo()
 {
-  return {LLVM_PLUGIN_API_VERSION, "LoopAnnotatedTrace", LLVM_VERSION_STRING,
+  return {LLVM_PLUGIN_API_VERSION, "MemoryAccessPatterns", LLVM_VERSION_STRING,
           [](PassBuilder & PB) {
             PB.registerPipelineParsingCallback(
               [](StringRef Name, ModulePassManager & MPM,
                  ArrayRef<PassBuilder::PipelineElement>) {
                 if (Name == "loop-annotated-trace")
                 {
-                  MPM.addPass(LoopAnnotatedTracePass());
+                  MPM.addPass(MemoryAccessPatternsPass());
                   return true;
                 }
                 return false;
@@ -94,5 +94,5 @@ extern "C" LLVM_ATTRIBUTE_WEAK
   LLVM_ATTRIBUTE_VISIBILITY_DEFAULT ::llvm::PassPluginLibraryInfo
   llvmGetPassPluginInfo()
 {
-  return getLoopAnnotatedTracePluginInfo();
+  return getMemoryAccessPatternsPluginInfo();
 }

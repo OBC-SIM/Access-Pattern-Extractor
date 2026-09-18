@@ -11,13 +11,13 @@
 
 using namespace llvm;
 
-namespace lat
+namespace map
 {
 
-static std::unique_ptr<lat::LoopNest> buildLoopNest(
+static std::unique_ptr<map::LoopNest> buildLoopNest(
   Loop * L, ScalarEvolution & SE, unsigned depth, const NameMap & names,
   const std::set<const Function *> & inlineFuncs,
-  const lat::AccessMetadata & metadata, const Function & current, bool strict);
+  const map::AccessMetadata & metadata, const Function & current, bool strict);
 
 /**
  * @brief 루프 바디의 직접 BB에서 메모리 접근 Statement를 수집한다.
@@ -31,9 +31,9 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(
  * @param names llvm.dbg.value 기반 Value → 변수명 맵
  */
 static void populateBody(Loop * L, ScalarEvolution & SE, unsigned depth,
-                         lat::LoopNest & nest, const NameMap & names,
+                         map::LoopNest & nest, const NameMap & names,
                          const std::set<const Function *> & inlineFuncs,
-                         const lat::AccessMetadata & metadata,
+                         const map::AccessMetadata & metadata,
                          const Function & current, bool strict)
 {
   std::set<BasicBlock *> subLoopBlocks;
@@ -80,14 +80,14 @@ static void populateBody(Loop * L, ScalarEvolution & SE, unsigned depth,
   }
 }
 
-static std::unique_ptr<lat::LoopNest> buildLoopNest(
+static std::unique_ptr<map::LoopNest> buildLoopNest(
   Loop * L, ScalarEvolution & SE, unsigned depth, const NameMap & names,
   const std::set<const Function *> & inlineFuncs,
-  const lat::AccessMetadata & metadata, const Function & current, bool strict)
+  const map::AccessMetadata & metadata, const Function & current, bool strict)
 {
   const auto bounds = strict ? region::resolveLoopBounds(*L, SE)
                              : index::resolveInduction(L, SE).bounds;
-  auto nest = std::make_unique<lat::LoopNest>(getInductionVarName(L, SE, names),
+  auto nest = std::make_unique<map::LoopNest>(getInductionVarName(L, SE, names),
                                               bounds.start, bounds.bound, depth,
                                               bounds.step);
   populateBody(L, SE, depth, *nest, names, inlineFuncs, metadata, current,
@@ -114,7 +114,7 @@ static std::unique_ptr<lat::LoopNest> buildLoopNest(
 void buildRootStatements(Function & F, LoopInfo & LI, ScalarEvolution & SE,
                          const NameMap & names,
                          const std::set<const Function *> & inlineFuncs,
-                         const lat::AccessMetadata & metadata,
+                         const map::AccessMetadata & metadata,
                          std::vector<std::unique_ptr<Statement>> & root,
                          const AnalysisRegion * selection, bool strict)
 {
@@ -164,4 +164,4 @@ void buildRootStatements(Function & F, LoopInfo & LI, ScalarEvolution & SE,
   }
 }
 
-}  // namespace lat
+}  // namespace map

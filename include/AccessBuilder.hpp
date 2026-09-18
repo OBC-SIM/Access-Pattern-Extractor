@@ -9,7 +9,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 
-namespace lat
+namespace map
 {
 
 struct AccessMetadata;
@@ -26,7 +26,7 @@ std::unique_ptr<Statement> makeDirectCall(llvm::CallBase & call,
                                           const llvm::Function & current);
 
 /**
- * @brief LLVM instruction 하나를 LAT access/call Statement로 변환한다.
+ * @brief LLVM instruction 하나를 MAP access/call Statement로 변환한다.
  *
  * Load/Store 접근은 op 필드에 각각 "load"/"store" 계약을 보존한다.
  * `ape.inline` 함수로의 direct call은 CallStmt로 보존하고, 그 외
@@ -45,4 +45,4 @@ makeAccessFromInstr(llvm::Instruction & I, llvm::ScalarEvolution & SE,
                     const std::set<const llvm::Function *> & inlineFuncs,
                     const llvm::Function & current);
 
-}  // namespace lat
+}  // namespace map

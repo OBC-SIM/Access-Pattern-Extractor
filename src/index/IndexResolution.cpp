@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-namespace lat::index
+namespace map::index
 {
 
 std::string resolveSingleIndex(Value * value, ScalarEvolution & evolution,
@@ -30,4 +30,4 @@ std::string resolveSingleIndex(Value * value, ScalarEvolution & evolution,
   return formatAffine(form);
 }
 
-}  // namespace lat::index
+}  // namespace map::index

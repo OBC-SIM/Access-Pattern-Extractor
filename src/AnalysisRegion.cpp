@@ -13,7 +13,7 @@
 
 using namespace llvm;
 
-namespace lat
+namespace map
 {
 namespace
 {
@@ -193,4 +193,4 @@ bool hasRegionTransport(const Module & module)
   return false;
 }
 
-}  // namespace lat
+}  // namespace map

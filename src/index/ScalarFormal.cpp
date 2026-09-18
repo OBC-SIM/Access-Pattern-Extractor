@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-namespace lat::index
+namespace map::index
 {
 namespace
 {
@@ -124,4 +124,4 @@ resolveFormalIndex(Value * value, const NameMap & names, bool unsignedValue)
   return formal->name;
 }
 
-}  // namespace lat::index
+}  // namespace map::index

@@ -15,7 +15,7 @@
 
 using namespace llvm;
 
-namespace lat {
+namespace map {
 
 // NameMap·IR hasName 모두 실패 시 최후 식별자.
 // Module 컨텍스트를 사용해 슬롯 번호를 포함한 피연산자 표현을 반환한다.
@@ -160,4 +160,4 @@ bool hasFunctionAnnotation(Function& F, StringRef Annotation) {
     return false;
 }
 
-}  // namespace lat
+}  // namespace map

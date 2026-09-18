@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-namespace lat::index
+namespace map::index
 {
 namespace
 {
@@ -115,4 +115,4 @@ std::string inductionName(Loop * loop, ScalarEvolution & evolution,
   return name;
 }
 
-}  // namespace lat::index
+}  // namespace map::index

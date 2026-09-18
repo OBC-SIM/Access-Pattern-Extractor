@@ -4,7 +4,7 @@
 
 #include "region/RegionFrontendAction.hpp"
 
-namespace lat::test
+namespace map::test
 {
 
 inline llvm::json::Object
@@ -40,4 +40,4 @@ inline void expectRejected(const std::string & body,
     "int a[8], n = 3;\nvoid kernel(void) {\n" + body + "\n}\n", diagnostic);
 }
 
-}  // namespace lat::test
+}  // namespace map::test

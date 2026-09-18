@@ -1,6 +1,6 @@
 #include "helpers/RegionTestSupport.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -191,7 +191,7 @@ TEST(RegionValidation, RejectsConditionalControlHiddenInInlineHelper)
                std::invalid_argument);
 }
 
-TEST(RegionValidation, RejectsRuntimeParameterIndexBeforeLatOutput)
+TEST(RegionValidation, RejectsRuntimeParameterIndexBeforeMapOutput)
 {
   EXPECT_THROW(
     compileBody(begin + "a[index]++;" + end, "void kernel(long index)"),
@@ -199,4 +199,4 @@ TEST(RegionValidation, RejectsRuntimeParameterIndexBeforeLatOutput)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

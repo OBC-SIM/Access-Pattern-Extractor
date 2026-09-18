@@ -13,7 +13,7 @@
 
 using namespace llvm;
 
-namespace lat {
+namespace map {
 namespace {
 
 static Value* baseObject(Value* Ptr) {
@@ -196,4 +196,4 @@ std::string getObjectId(Value* Ptr, const Function& Current, const NameMap& name
     return {};
 }
 
-}  // namespace lat
+}  // namespace map

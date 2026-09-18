@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(LoopAnnotatedTrace LANGUAGES C CXX)
+project(MemoryAccessPatterns LANGUAGES C CXX)
 
 find_package(LLVM 14 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -13,7 +13,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 # ── LLVM Pass (shared library) ────────────────────────────
-add_library(LatBuilders OBJECT
+add_library(MapBuilders OBJECT
     src/AccessBuilder.cpp
     src/AccessMetadata.cpp
     src/AccessMetadataBuilder.cpp
@@ -27,29 +27,29 @@ add_library(LatBuilders OBJECT
     src/index/LoopInduction.cpp
     src/index/ScalarFormal.cpp
     src/StatementBuilder.cpp
-    src/LatModuleBuilder.cpp
+    src/MapModuleBuilder.cpp
     src/AnalysisRegion.cpp
     src/region/RegionLoopBounds.cpp
     src/region/RegionAccessBuilder.cpp
 )
-target_include_directories(LatBuilders PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-set_target_properties(LatBuilders PROPERTIES POSITION_INDEPENDENT_CODE ON)
-add_library(LoopAnnotatedTrace MODULE src/LoopAnalysisPass.cpp)
-target_link_libraries(LoopAnnotatedTrace PRIVATE LatBuilders)
-target_include_directories(LoopAnnotatedTrace PRIVATE
+target_include_directories(MapBuilders PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(MapBuilders PROPERTIES POSITION_INDEPENDENT_CODE ON)
+add_library(MemoryAccessPatterns MODULE src/LoopAnalysisPass.cpp)
+target_link_libraries(MemoryAccessPatterns PRIVATE MapBuilders)
+target_include_directories(MemoryAccessPatterns PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-set_target_properties(LoopAnnotatedTrace PROPERTIES
+set_target_properties(MemoryAccessPatterns PROPERTIES
     CXX_VISIBILITY_PRESET default
     VISIBILITY_INLINES_HIDDEN NO
 )
 if(APPLE)
-    set_target_properties(LoopAnnotatedTrace PROPERTIES
+    set_target_properties(MemoryAccessPatterns PROPERTIES
         MACOSX_RPATH ON
         LINK_FLAGS "-undefined dynamic_lookup"
     )
 else()
-    target_link_options(LoopAnnotatedTrace PRIVATE "-Wl,--allow-shlib-undefined")
+    target_link_options(MemoryAccessPatterns PRIVATE "-Wl,--allow-shlib-undefined")
 endif()
 
 # ── GTest 단위 테스트 ─────────────────────────────────────
@@ -59,7 +59,7 @@ find_library(GTEST_MAIN_LIB gtest_main PATHS /usr/lib/x86_64-linux-gnu)
 
 if(GTEST_LIB AND GTEST_MAIN_LIB)
     enable_testing()
-    add_executable(LoopAnnotatedTraceTests
+    add_executable(MemoryAccessPatternsTests
         tests/Statement_test.cpp
         tests/CallStmt_test.cpp
         tests/AccessBuilder_test.cpp
@@ -83,17 +83,17 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         src/index/ScalarFormal.cpp
         src/region/RegionLoopBounds.cpp
     )
-    target_include_directories(LoopAnnotatedTraceTests PRIVATE
+    target_include_directories(MemoryAccessPatternsTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${LLVM_INCLUDE_DIRS}
     )
-    target_link_libraries(LoopAnnotatedTraceTests
+    target_link_libraries(MemoryAccessPatternsTests
         ${GTEST_LIB}
         ${GTEST_MAIN_LIB}
         ${LLVM_TEST_LIBS}
         pthread
     )
-    add_test(NAME LoopAnnotatedTraceTests COMMAND LoopAnnotatedTraceTests)
+    add_test(NAME MemoryAccessPatternsTests COMMAND MemoryAccessPatternsTests)
     llvm_map_components_to_libnames(LLVM_REGION_TEST_LIBS asmparser passes)
     add_executable(YardaIndexTests tests/IndexResolution_test.cpp
         tests/IndexAffine_test.cpp
@@ -101,13 +101,13 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         tests/IndexFormal_test.cpp tests/IndexScope_test.cpp
         tests/IndexProducer_test.cpp tests/helpers/RegionTestMain.cpp)
     target_link_libraries(YardaIndexTests PRIVATE
-        LatBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
+        MapBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
     add_test(NAME YardaIndexTests COMMAND YardaIndexTests)
     add_executable(YardaRegionIrTests
         tests/helpers/RegionTestMain.cpp
         tests/AnalysisRegion_test.cpp)
     target_link_libraries(YardaRegionIrTests PRIVATE
-        LatBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
+        MapBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)
     add_test(NAME YardaRegionIrTests COMMAND YardaRegionIrTests)
     find_program(YARDA_REGION_OPT NAMES opt-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
     find_program(YARDA_INDEX_CLANG NAMES clang-14 HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
@@ -133,7 +133,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         add_test(NAME "LegacyAffineRejection_${case_name}" COMMAND ${CMAKE_COMMAND}
             "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-affine-${case_name}"
             "-DCLANG=${YARDA_INDEX_CLANG}" "-DOPT=${YARDA_REGION_OPT}"
-            "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+            "-DPLUGIN=$<TARGET_FILE:MemoryAccessPatterns>"
             "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy_affine_rejected.c"
             "-DINDEX=${index}"
             "-DREASON=${reason}"
@@ -144,7 +144,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
         add_test(NAME "LegacyPointerIndexRejection_${case_name}" COMMAND ${CMAKE_COMMAND}
             "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-pointer-index-${case_name}"
             "-DCLANG=${YARDA_INDEX_CLANG}" "-DOPT=${YARDA_REGION_OPT}"
-            "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+            "-DPLUGIN=$<TARGET_FILE:MemoryAccessPatterns>"
             "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy_pointer_index_rejected.c"
             "-DINDEX=${index}"
             "-DREASON=expression is outside the affine grammar"
@@ -153,19 +153,19 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME LegacyRegionRejection COMMAND ${CMAKE_COMMAND}
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/legacy-region-rejection"
         "-DOPT=${YARDA_REGION_OPT}"
-        "-DPLUGIN=$<TARGET_FILE:LoopAnnotatedTrace>"
+        "-DPLUGIN=$<TARGET_FILE:MemoryAccessPatterns>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_legacy_region_rejection.cmake")
     add_test(NAME StructFixtureTrace
         COMMAND sh
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_struct_fixture.sh
             ${CMAKE_CURRENT_SOURCE_DIR}
-            $<TARGET_FILE:LoopAnnotatedTrace>
+            $<TARGET_FILE:MemoryAccessPatterns>
     )
     add_test(NAME PointerIndirectionFixtureTrace
         COMMAND sh
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_pointer_indirection_fixture.sh
             ${CMAKE_CURRENT_SOURCE_DIR}
-            $<TARGET_FILE:LoopAnnotatedTrace>
+            $<TARGET_FILE:MemoryAccessPatterns>
     )
 else()
     message(WARNING "GTest not found — skipping unit tests")

@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-namespace lat {
+namespace map {
 namespace {
 
 static Value* baseObject(Value* V) {
@@ -132,4 +132,4 @@ GepAccessDescription describeGepAccess(GEPOperator * GEP, ScalarEvolution & SE,
   return result;
 }
 
-}  // namespace lat
+}  // namespace map

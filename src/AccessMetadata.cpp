@@ -1,6 +1,6 @@
 #include "../include/AccessMetadata.hpp"
 
-namespace lat {
+namespace map {
 
 static void addTypeFields(llvm::json::Object& obj, const std::string& kind,
                           const std::vector<int64_t>& shape,
@@ -74,4 +74,4 @@ llvm::json::Object toJson(const AccessMetadata& metadata) {
     };
 }
 
-}  // namespace lat
+}  // namespace map

@@ -4,13 +4,13 @@
 #include <string>
 
 #include "IrHelpers.hpp"
-#include "LatModuleBuilder.hpp"
+#include "MapModuleBuilder.hpp"
 #include "llvm/AsmParser/Parser.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/SourceMgr.h"
 
-namespace lat::test
+namespace map::test
 {
 
 /** @brief Own the IR and analysis managers for one independent index test. */
@@ -62,7 +62,7 @@ struct IndexIr
   /**
    * @brief Resolve the named index using the production compatibility API.
    * @param names Optional debug names; ownership stays with the caller.
-   * @return LAT index vector, or the production rejection exception.
+   * @return MAP index vector, or the production rejection exception.
    */
   std::vector<std::string> resolve(const NameMap & names = {})
   {
@@ -112,4 +112,4 @@ inline std::string indexLoop(const std::string & body,
          " br label %header\nexit: ret void\n}\n";
 }
 
-}  // namespace lat::test
+}  // namespace map::test

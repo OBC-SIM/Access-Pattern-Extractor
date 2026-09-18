@@ -2,7 +2,7 @@
 
 #include "helpers/IndexIrFixture.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -101,4 +101,4 @@ TEST(IndexRange, RejectsWideConstantsOutsideInt64)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "AnalysisRegion.hpp"
-#include "LatModuleBuilder.hpp"
+#include "MapModuleBuilder.hpp"
 #include "RegionAstValidator.hpp"
 #include "RegionDriverOptions.hpp"
 #include "clang/Basic/Version.h"
@@ -19,7 +19,7 @@
 #error "The region pipeline requires matching Clang 14 development headers"
 #endif
 
-namespace lat::region
+namespace map::region
 {
 namespace
 {
@@ -91,7 +91,7 @@ protected:
       if (!module)
         throw std::invalid_argument("compiler did not produce a module");
       auto regions = captureAnalysisRegions(*module, source_.functions);
-      const auto exported = exportedLatFunctions(*module, &regions);
+      const auto exported = exportedMapFunctions(*module, &regions);
       for (const auto & function : *module)
       {
         const auto error =
@@ -118,7 +118,7 @@ protected:
       if (llvm::verifyModule(*module, &llvm::errs()))
         throw std::invalid_argument("invalid canonical region module");
       validateAnalysisRegions(*module, regions, functions);
-      result_.emplace(buildLatModule(*module, modules, &regions));
+      result_.emplace(buildMapModule(*module, modules, &regions));
     }
     catch (const std::exception & error)
     {
@@ -161,4 +161,4 @@ compileRegionSource(llvm::StringRef source, const std::string & filename,
   return std::move(*result);
 }
 
-}  // namespace lat::region
+}  // namespace map::region

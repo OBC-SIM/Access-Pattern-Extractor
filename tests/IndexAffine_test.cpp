@@ -3,7 +3,7 @@
 #include "helpers/IndexIrFixture.hpp"
 #include "helpers/IndexRejection.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -169,4 +169,4 @@ TEST(IndexAffine, RejectsSiblingLoopCaptureBeforeMergingDebugNames)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

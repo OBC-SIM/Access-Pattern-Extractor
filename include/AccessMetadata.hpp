@@ -7,7 +7,7 @@
 
 #include "llvm/Support/JSON.h"
 
-namespace lat {
+namespace map {
 
 /**
  * @brief 구조체 필드의 ABI layout과 source-level 이름을 보관한다.
@@ -54,7 +54,7 @@ struct ObjectMetadata {
 };
 
 /**
- * @brief LAT v2 root metadata에 들어갈 object와 structure layout 집합.
+ * @brief MAP v2 root metadata에 들어갈 object와 structure layout 집합.
  */
 struct AccessMetadata {
     std::map<std::string, ObjectMetadata> objects;
@@ -65,7 +65,7 @@ struct AccessMetadata {
  * @brief FieldMetadata를 JSON object로 변환한다.
  *
  * @param field 변환할 field metadata
- * @return LAT metadata schema에 맞춘 JSON object
+ * @return MAP metadata schema에 맞춘 JSON object
  */
 llvm::json::Object toJson(const FieldMetadata& field);
 
@@ -73,7 +73,7 @@ llvm::json::Object toJson(const FieldMetadata& field);
  * @brief StructMetadata를 JSON object로 변환한다.
  *
  * @param structure 변환할 structure metadata
- * @return LAT metadata schema에 맞춘 JSON object
+ * @return MAP metadata schema에 맞춘 JSON object
  */
 llvm::json::Object toJson(const StructMetadata& structure);
 
@@ -81,16 +81,16 @@ llvm::json::Object toJson(const StructMetadata& structure);
  * @brief ObjectMetadata를 JSON object로 변환한다.
  *
  * @param object 변환할 object metadata
- * @return LAT metadata schema에 맞춘 JSON object
+ * @return MAP metadata schema에 맞춘 JSON object
  */
 llvm::json::Object toJson(const ObjectMetadata& object);
 
 /**
- * @brief AccessMetadata를 LAT v2 root metadata JSON으로 변환한다.
+ * @brief AccessMetadata를 MAP v2 root metadata JSON으로 변환한다.
  *
  * @param metadata 변환할 metadata 집합
  * @return `objects`와 `structs`를 포함하는 JSON object
  */
 llvm::json::Object toJson(const AccessMetadata& metadata);
 
-}  // namespace lat
+}  // namespace map

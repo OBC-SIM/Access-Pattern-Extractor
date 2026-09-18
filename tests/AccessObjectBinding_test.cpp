@@ -21,7 +21,7 @@
 #include "../include/JsonExportVisitor.hpp"
 #include "../include/Statement.hpp"
 
-using namespace lat;
+using namespace map;
 using namespace llvm;
 
 TEST(AccessObjectBinding, OmitsGlobalExcludedFromMetadata)

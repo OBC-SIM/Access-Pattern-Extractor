@@ -2,7 +2,7 @@
 
 #include "AffineExpression.hpp"
 
-namespace lat::index
+namespace map::index
 {
 
 /**
@@ -20,4 +20,4 @@ AffineExpression resolveAffine(const llvm::SCEV * expression,
                                const NameMap & names,
                                const llvm::Instruction * useSite);
 
-}  // namespace lat::index
+}  // namespace map::index

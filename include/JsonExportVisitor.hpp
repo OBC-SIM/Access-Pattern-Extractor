@@ -3,7 +3,7 @@
 #include "Statement.hpp"
 #include "llvm/Support/JSON.h"
 
-namespace lat {
+namespace map {
 
 /**
  * @brief Loop Annotated Tree를 llvm::json::Value로 직렬화하는 Visitor.
@@ -99,4 +99,4 @@ private:
     llvm::json::Value Result_ = nullptr;
 };
 
-}  // namespace lat
+}  // namespace map

@@ -3,7 +3,7 @@
 #include "AccessBuilder.hpp"
 #include "helpers/IndexIrFixture.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -15,7 +15,7 @@ TEST(IndexScope, RejectsExitAccessUsingTheHeaderPhi)
                  "exit: %outside = getelementptr [64 x i32], [64 x i32]* @a, "
                  "i64 0, i64 %i\nstore i32 7, i32* %outside\nret void");
   IndexIr ir(source);
-  EXPECT_THROW(buildLatModule(*ir.module, ir.modules), std::invalid_argument);
+  EXPECT_THROW(buildMapModule(*ir.module, ir.modules), std::invalid_argument);
 }
 
 TEST(IndexScope, RejectsExitAccessWhenItsGepWasDefinedInsideTheLoop)
@@ -30,7 +30,7 @@ TEST(IndexScope, RejectsExitAccessWhenItsGepWasDefinedInsideTheLoop)
     " store i32 1, i32* %p\n %next = add i64 %i, 1\n"
     " br label %header\nexit: store i32 7, i32* %p\nret void\n}\n";
   IndexIr ir(source);
-  EXPECT_THROW(buildLatModule(*ir.module, ir.modules), std::invalid_argument);
+  EXPECT_THROW(buildMapModule(*ir.module, ir.modules), std::invalid_argument);
 }
 
 TEST(IndexScope, RejectsLegacyIndexQueryOutsideTheInductionScope)
@@ -59,4 +59,4 @@ TEST(IndexScope, RejectsAnEscapedInductionPassedToInlineCall)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

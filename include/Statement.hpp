@@ -8,7 +8,7 @@
 #include "AccessPath.hpp"
 #include "ArrayMetadata.hpp"
 
-namespace lat {
+namespace map {
 
 class ScalarAccess;
 class ArrayAccess;
@@ -191,4 +191,4 @@ private:
     std::vector<std::unique_ptr<Statement>> body_;
 };
 
-}  // namespace lat
+}  // namespace map

@@ -10,7 +10,7 @@
 
 using namespace llvm;
 
-namespace lat
+namespace map
 {
 
 static bool isStorageObject(Value * V)
@@ -150,4 +150,4 @@ std::unique_ptr<Statement> makeAccessFromInstr(
   return makeArrayOrScalar(ptr, I, SE, names, metadata, current, std::move(op));
 }
 
-}  // namespace lat
+}  // namespace map

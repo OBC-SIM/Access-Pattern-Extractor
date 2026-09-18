@@ -7,7 +7,7 @@ namespace
 
 TEST(RegionFrontend, SelectsLoopAndPreservesOutsideConstantDefinitions)
 {
-  auto result = lat::region::compileRegionSource(R"(
+  auto result = map::region::compileRegionSource(R"(
 int before[8], inside[8], after[8];
 void kernel(void) {
   const int bound = 3, offset = 1;
@@ -48,7 +48,7 @@ void kernel(void) {
 
 TEST(RegionFrontend, KeepsEmptyAndMultipleAutomaticRegionRoots)
 {
-  auto result = lat::region::compileRegionSource(R"(
+  auto result = map::region::compileRegionSource(R"(
 int a;
 void first(void) {
   a = 1;
@@ -77,7 +77,7 @@ void second(void) {
 
 TEST(RegionFrontend, RetainsOutsideLoadedValueButOnlySelectsInsideLoad)
 {
-  auto result = lat::region::compileRegionSource(R"(
+  auto result = map::region::compileRegionSource(R"(
 const int bound = 3, offset = 1;
 int external_value = 7, inside[8];
 void kernel(void) {
@@ -114,7 +114,7 @@ void kernel(void) {
 
 TEST(RegionFrontend, RegionTakesPrecedenceAndKeepsFunctionAndInlineRoles)
 {
-  auto result = lat::region::compileRegionSource(R"(
+  auto result = map::region::compileRegionSource(R"(
 #define ANALYZE __attribute__((annotate("ape.analyze")))
 #define INLINE __attribute__((annotate("ape.inline")))
 int a[8];
@@ -142,7 +142,7 @@ ANALYZE void selected(void) {
 
 TEST(RegionFrontend, RetainsOpaqueSelectedCallForHierarchyRejection)
 {
-  auto result = lat::region::compileRegionSource(R"(
+  auto result = map::region::compileRegionSource(R"(
 void external(void);
 void kernel(void) {
 #pragma APE_ANALYZE_BEGIN
@@ -157,9 +157,9 @@ void kernel(void) {
             "Call");
 }
 
-TEST(RegionFrontend, RejectsRuntimeBoundBeforeProducingLat)
+TEST(RegionFrontend, RejectsRuntimeBoundBeforeProducingMap)
 {
-  EXPECT_THROW(lat::region::compileRegionSource(R"(
+  EXPECT_THROW(map::region::compileRegionSource(R"(
 int n = 3, a[8];
 void kernel(void) {
 #pragma APE_ANALYZE_BEGIN

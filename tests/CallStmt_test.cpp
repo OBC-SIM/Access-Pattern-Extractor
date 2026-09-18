@@ -4,7 +4,7 @@
 #include "../include/JsonExportVisitor.hpp"
 #include "../include/Statement.hpp"
 
-using namespace lat;
+using namespace map;
 
 // json::Value는 lvalue에서 getAsObject()를 호출해야 한다.
 static const llvm::json::Object* toObj(const llvm::json::Value& V) {

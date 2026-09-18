@@ -65,7 +65,7 @@ endif()
 
 include("${SOURCE_DIR}/check_normalization.cmake")
 include("${SOURCE_DIR}/check_optimization.cmake")
-include("${SOURCE_DIR}/check_lat.cmake")
+include("${SOURCE_DIR}/check_map.cmake")
 include("${SOURCE_DIR}/check_global_values.cmake")
 if(CMAKE_HOST_UNIX)
     include("${SOURCE_DIR}/check_output_errors.cmake")

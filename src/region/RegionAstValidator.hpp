@@ -5,7 +5,7 @@
 #include "RegionPragmas.hpp"
 #include "clang/AST/ASTConsumer.h"
 
-namespace lat::region
+namespace map::region
 {
 
 /**
@@ -17,4 +17,4 @@ namespace lat::region
 std::unique_ptr<clang::ASTConsumer>
 makeRegionAstValidator(SourceRegions & source);
 
-}  // namespace lat::region
+}  // namespace map::region

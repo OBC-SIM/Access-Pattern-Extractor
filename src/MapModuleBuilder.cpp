@@ -1,4 +1,4 @@
-#include "LatModuleBuilder.hpp"
+#include "MapModuleBuilder.hpp"
 
 #include <stdexcept>
 
@@ -9,7 +9,7 @@
 
 using namespace llvm;
 
-namespace lat
+namespace map
 {
 namespace
 {
@@ -19,7 +19,7 @@ constexpr llvm::StringLiteral InlineAnnotation = "ape.inline";
 
 }  // namespace
 
-std::set<const Function *> exportedLatFunctions(Module & module,
+std::set<const Function *> exportedMapFunctions(Module & module,
                                                 const AnalysisRegions * regions)
 {
   std::set<const Function *> definitions, selected;
@@ -35,10 +35,10 @@ std::set<const Function *> exportedLatFunctions(Module & module,
   return selected.empty() ? definitions : selected;
 }
 
-llvm::json::Object buildLatModule(Module & M, ModuleAnalysisManager & MAM,
+llvm::json::Object buildMapModule(Module & M, ModuleAnalysisManager & MAM,
                                   const AnalysisRegions * regions)
 {
-  const auto exported = exportedLatFunctions(M, regions);
+  const auto exported = exportedMapFunctions(M, regions);
   auto & FAM =
     MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
   std::set<const Function *> analyzeFuncs;
@@ -52,7 +52,7 @@ llvm::json::Object buildLatModule(Module & M, ModuleAnalysisManager & MAM,
     if (hasFunctionAnnotation(F, InlineAnnotation)) inlineFuncs.insert(&F);
   }
 
-  lat::AccessMetadata metadata = buildAccessMetadata(M);
+  map::AccessMetadata metadata = buildAccessMetadata(M);
   llvm::json::Array moduleFuncs;
   for (Function & F : M)
   {
@@ -72,7 +72,7 @@ llvm::json::Object buildLatModule(Module & M, ModuleAnalysisManager & MAM,
     llvm::json::Array params;
     for (Argument & Arg : F.args()) params.push_back(getValueName(&Arg, names));
 
-    lat::JsonExportVisitor vis;
+    map::JsonExportVisitor vis;
     llvm::json::Array bodyJson;
     for (auto & stmt : root)
     {
@@ -99,8 +99,8 @@ llvm::json::Object buildLatModule(Module & M, ModuleAnalysisManager & MAM,
   }
 
   return llvm::json::Object{{"schema_version", 2},
-                            {"metadata", lat::toJson(metadata)},
+                            {"metadata", map::toJson(metadata)},
                             {"functions", std::move(moduleFuncs)}};
 }
 
-}  // namespace lat
+}  // namespace map

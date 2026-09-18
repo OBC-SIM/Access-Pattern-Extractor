@@ -12,7 +12,7 @@
 
 #include "../include/IrHelpers.hpp"
 
-using namespace lat;
+using namespace map;
 using namespace llvm;
 
 TEST(ArrayMetadata, ExtractsNestedArrayShapeAndElementSize) {

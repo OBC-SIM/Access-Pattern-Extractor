@@ -5,7 +5,7 @@
 
 using namespace llvm;
 
-namespace lat {
+namespace map {
 namespace {
 
 static std::string structName(StructType* Ty) {
@@ -65,4 +65,4 @@ void fillTypeInfo(FieldMetadata& field, Type* Ty, const DataLayout& DL) {
     fillTypeInfoImpl(field, Ty, DL);
 }
 
-}  // namespace lat
+}  // namespace map

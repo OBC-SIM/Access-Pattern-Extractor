@@ -36,7 +36,7 @@ grep -Fq '"function":"unresolved_struct_field_pointer"' "$json"
 grep -Fq '"function":"unresolved_selected_pointer"' "$json"
 
 if grep -Fq '::temp:' "$json"; then
-  echo "LAT object fields must not contain unregistered temp IDs" >&2
+  echo "MAP object fields must not contain unregistered temp IDs" >&2
   exit 1
 fi
 

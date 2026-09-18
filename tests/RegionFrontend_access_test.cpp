@@ -1,6 +1,6 @@
 #include "helpers/RegionTestSupport.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -81,4 +81,4 @@ void kernel(void) {
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

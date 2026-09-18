@@ -88,7 +88,7 @@ class CompileProbe : public clang::EmitLLVMOnlyAction {
 } // namespace
 
 /**
- * @brief Run the restricted compiler experiment without publishing LAT.
+ * @brief Run the restricted compiler experiment without publishing MAP.
  * @param argc Number of command-line arguments.
  * @param argv Borrowed, non-null command-line argument array.
  * @return Zero on successful IR emission, nonzero on invalid input or failure.

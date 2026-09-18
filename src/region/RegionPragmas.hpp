@@ -11,7 +11,7 @@ namespace clang
 {
 class Preprocessor;
 }
-namespace lat::region
+namespace map::region
 {
 
 /** @brief One literal main-file directive, matched against its injected AST. */
@@ -42,4 +42,4 @@ struct SourceRegions
 void registerRegionPragmas(clang::Preprocessor & preprocessor,
                            SourceRegions & source);
 
-}  // namespace lat::region
+}  // namespace map::region

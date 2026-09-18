@@ -4,7 +4,7 @@
 
 using namespace llvm;
 
-namespace lat::index
+namespace map::index
 {
 
 [[noreturn]] void rejectAffine(const char * reason)
@@ -105,4 +105,4 @@ std::string formatAffine(const AffineExpression & expression)
   return result;
 }
 
-}  // namespace lat::index
+}  // namespace map::index

@@ -5,7 +5,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 
-namespace lat::region
+namespace map::region
 {
 
 /** @brief Exact constant iteration parameters for the supported header test. */
@@ -27,4 +27,4 @@ struct LoopBounds
 LoopBounds resolveLoopBounds(llvm::Loop & loop,
                              llvm::ScalarEvolution & evolution);
 
-}  // namespace lat::region
+}  // namespace map::region

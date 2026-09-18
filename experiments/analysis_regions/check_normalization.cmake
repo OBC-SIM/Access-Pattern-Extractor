@@ -13,4 +13,4 @@ foreach(input canonical sealed no-debug-canonical)
         message(FATAL_ERROR "${input}: expected one normalization-created, untagged phi")
     endif()
 endforeach()
-# check_lat.cmake independently verifies that this loop still has bound=3/index=i+1.
+# check_map.cmake independently verifies that this loop still has bound=3/index=i+1.

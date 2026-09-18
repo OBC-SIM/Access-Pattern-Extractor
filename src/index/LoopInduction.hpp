@@ -4,7 +4,7 @@
 #include "IrHelpers.hpp"
 #include "llvm/ADT/APInt.h"
 
-namespace lat::index
+namespace map::index
 {
 
 /** @brief A checked emitted loop and its borrowed controlling PHI. */
@@ -52,4 +52,4 @@ llvm::APInt lastInductionValue(const region::LoopBounds & bounds);
 std::string inductionName(llvm::Loop * loop, llvm::ScalarEvolution & evolution,
                           const NameMap & names);
 
-}  // namespace lat::index
+}  // namespace map::index

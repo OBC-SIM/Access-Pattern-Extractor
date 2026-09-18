@@ -9,7 +9,7 @@
 #include "IrHelpers.hpp"
 #include "Statement.hpp"
 
-namespace lat
+namespace map
 {
 
 /**
@@ -34,4 +34,4 @@ void buildRootStatements(llvm::Function & F, llvm::LoopInfo & LI,
                          const AnalysisRegion * selection = nullptr,
                          bool strict = false);
 
-}  // namespace lat
+}  // namespace map

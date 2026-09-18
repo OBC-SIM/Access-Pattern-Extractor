@@ -13,7 +13,7 @@ add_library(YardaRegionFrontend STATIC
     src/region/RegionAstValidator.cpp
     src/region/RegionDriverOptions.cpp
     src/region/RegionOutput.cpp)
-target_link_libraries(YardaRegionFrontend PUBLIC LatBuilders
+target_link_libraries(YardaRegionFrontend PUBLIC MapBuilders
     ${YARDA_CLANG_CPP} ${YARDA_REGION_LLVM})
 target_include_directories(YardaRegionFrontend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(YardaRegionFrontend SYSTEM PRIVATE
@@ -22,8 +22,8 @@ target_compile_definitions(YardaRegionFrontend PRIVATE
     YARDA_REGION_CLANG="${YARDA_REGION_CLANG}")
 target_compile_options(YardaRegionFrontend PRIVATE -Wall -Wextra -Wpedantic)
 
-add_executable(yarda_region_lat src/region/main.cpp)
-target_link_libraries(yarda_region_lat PRIVATE YardaRegionFrontend)
+add_executable(yarda_region_map src/region/main.cpp)
+target_link_libraries(yarda_region_map PRIVATE YardaRegionFrontend)
 
 if(GTEST_LIB)
     enable_testing()
@@ -39,10 +39,10 @@ if(GTEST_LIB)
     add_test(NAME RegionFrontendPipeline COMMAND ${CMAKE_COMMAND}
         "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/region-pipeline"
-        "-DCOMPILER=$<TARGET_FILE:yarda_region_lat>"
+        "-DCOMPILER=$<TARGET_FILE:yarda_region_map>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_region_frontend.cmake")
     add_test(NAME RegionFrontendSelection COMMAND ${CMAKE_COMMAND}
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/region-selection"
-        "-DCOMPILER=$<TARGET_FILE:yarda_region_lat>"
+        "-DCOMPILER=$<TARGET_FILE:yarda_region_map>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_region_selection.cmake")
 endif()

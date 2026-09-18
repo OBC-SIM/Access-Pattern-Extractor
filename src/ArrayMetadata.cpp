@@ -4,7 +4,7 @@
 
 using namespace llvm;
 
-namespace lat {
+namespace map {
 
 static Type* collectArrayShape(Type* Ty, std::vector<int64_t>& shape) {
     while (auto* ArrayTy = dyn_cast<ArrayType>(Ty)) {
@@ -23,4 +23,4 @@ ArrayMetadata getArrayMetadata(GEPOperator* GEP, const DataLayout& DL) {
     return metadata;
 }
 
-}  // namespace lat
+}  // namespace map

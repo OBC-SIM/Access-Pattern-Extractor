@@ -7,7 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 /**
- * @brief Compile one original C source to a complete selected LAT document.
+ * @brief Compile one original C source to a complete selected MAP document.
  * @param argc Number of command-line arguments.
  * @param argv Borrowed non-null source, output and allowed preprocessing
  * options.
@@ -19,7 +19,7 @@ int main(int argc, char ** argv)
   llvm::llvm_shutdown_obj shutdown;
   if (argc < 3)
   {
-    llvm::errs() << "usage: yarda_region_lat SOURCE.c OUTPUT.json [--] "
+    llvm::errs() << "usage: yarda_region_map SOURCE.c OUTPUT.json [--] "
                     "[preprocessing-options]\n";
     return 2;
   }
@@ -32,14 +32,14 @@ int main(int argc, char ** argv)
     if (!source)
       throw std::runtime_error("cannot read source: " +
                                source.getError().message());
-    const auto result = lat::region::compileRegionSource((*source)->getBuffer(),
+    const auto result = map::region::compileRegionSource((*source)->getBuffer(),
                                                          argv[1], arguments);
-    lat::region::writeRegionLat(result, argv[2]);
+    map::region::writeRegionMap(result, argv[2]);
     return 0;
   }
   catch (const std::exception & error)
   {
-    llvm::errs() << "yarda_region_lat: " << error.what() << '\n';
+    llvm::errs() << "yarda_region_map: " << error.what() << '\n';
     return 1;
   }
 }

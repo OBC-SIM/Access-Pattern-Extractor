@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace lat::region
+namespace map::region
 {
 
 /**
@@ -16,4 +16,4 @@ namespace lat::region
 std::vector<std::string>
 regionCompilerArguments(const std::vector<std::string> & arguments);
 
-}  // namespace lat::region
+}  // namespace map::region

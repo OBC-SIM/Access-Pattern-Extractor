@@ -2,13 +2,13 @@
 
 This standalone experiment validates the boundary route chosen by
 [the R1 contract](../../../docs/analysis-regions-v1.md). It is not a production
-region frontend. Source AST validation, selected LAT emission and task binding
+region frontend. Source AST validation, selected MAP emission and task binding
 are implemented in the [optional R2 frontend](../../docs/analysis-regions.md).
 The experiment itself is not linked into the product build.
 
 R2's legacy LLVM plugin rejects recognizable region transport. The experiment's
 whole-function control comparison therefore uses
-[a transport-free copy helper](helpers/legacy_lat.cmake). Original tagged IR
+[a transport-free copy helper](helpers/legacy_map.cmake). Original tagged IR
 remains unchanged for membership and normalization observations. This adapter
 also works with the earlier plugin; it does not add an imported-region-IR input
 path to the product.
@@ -52,16 +52,16 @@ CMake resolves Clang from the LLVM tools directory or `PATH` and uses that same
 path for the in-memory driver and native fixture compilation. Override it with
 `-DREGION_CLANG_EXECUTABLE=/path/to/clang-14`, keeping the executable and linked
 Clang/LLVM 14 libraries compatible. To use a root build in another directory,
-set `-DREGION_APE_PLUGIN=/path/to/libLoopAnnotatedTrace.so`; its default is the
-repository's `build/libLoopAnnotatedTrace.so`.
+set `-DREGION_APE_PLUGIN=/path/to/libMemoryAccessPatterns.so`; its default is the
+repository's `build/libMemoryAccessPatterns.so`.
 
 The local run used `/tmp/yarda-r1-QsqOAi/clang-dev` for that extraction and
 `/tmp/yarda-r1-QsqOAi/build` for the standalone build. No system package was
 installed. Temporary paths and logs are evidence of this run, not dependencies
 of future reproductions.
 
-CTest saves regenerated LLVM IR, text snapshots and existing whole-function LAT
-under `<build>/observations/`. The root build's `libLoopAnnotatedTrace.so` is used
+CTest saves regenerated LLVM IR, text snapshots and existing whole-function MAP
+under `<build>/observations/`. The root build's `libMemoryAccessPatterns.so` is used
 only to check compatibility with the current extractor. Generated files stay
 outside the source directory.
 
@@ -79,7 +79,7 @@ outside the source directory.
 | `check_pipeline_guard.cmake` | Reject optimization/LTO, plugin and instrumentation options before output |
 | `check_normalization.cmake` | Observe the untagged induction phi created by promotion |
 | `check_optimization.cmake` | Reproduce optimization failures and marker interference |
-| `check_lat.cmake` | Assert unchanged whole-function LAT and explicit loop/index expectations |
+| `check_map.cmake` | Assert unchanged whole-function MAP and explicit loop/index expectations |
 | `check_global_values.cmake` | Check folded constants, outside value reuse and selected global loads |
 | `check_output_errors.cmake` / `helpers/limit_output.sh` | On Unix, force write failures and require diagnostic exit 1 from both probes |
 
@@ -96,7 +96,7 @@ for R2. Its optional argument is restricted to `-O0/-O1/-O2/-O3/-Os/-Oz/-Ofast`,
 guard. Only `-O0` succeeds. Every other optional argument, including Clang/pass
 plugins, sanitizers, coverage and profiling flags, is rejected before entering
 Clang. There is no arbitrary driver-option pass-through. The probe
-produces tagged **whole-function IR**, not a selected LAT. Existing LLVM helpers
+produces tagged **whole-function IR**, not a selected MAP. Existing LLVM helpers
 still process the complete function, preserving external bound/index dependencies.
 
 Membership covers reachable instructions enclosed by the markers. It is captured
@@ -137,7 +137,7 @@ store after outside
 
 Stripping debug information before capture produces the same membership. The
 in-memory C++ path produces the same result. The native, captured and in-memory
-paths produce byte-identical **whole-function** LAT with the existing extractor.
+paths produce byte-identical **whole-function** MAP with the existing extractor.
 Independent assertions check `start=0`, `bound=3`, `step=1`, `index=i+1`, the
 canonical `global::inside` object, and load-before-store order. The six selected
 dynamic accesses are specified in the contract and still need R2 producer tests.
@@ -161,17 +161,17 @@ store inside region
 store after outside
 ```
 
-The canonical, native and in-memory paths have identical whole-function LAT.
+The canonical, native and in-memory paths have identical whole-function MAP.
 Explicit assertions check three iterations and the inner order: sample load,
 `inside[i+1]` load, then store. The contract's selected dynamic sequence has nine
 accesses; R2 must still verify those events through its producer/ELF integration.
 The nine-access expectation depends on this fixed pipeline's retained IR and
-recorded target; a compiler change requires rechecking the folded loads and LAT.
+recorded target; a compiler change requires rechecking the folded loads and MAP.
 
 `dynamic_bound.c` loads an unresolved external global bound. The probe emits IR
 showing `load bound region`, which establishes boundary membership only. This
-fixture is deliberately not sent to the existing LAT exporter. R2 must reject
-it before LAT output; successful R1 boundary capture is not evidence of supported
+fixture is deliberately not sent to the existing MAP exporter. R2 must reject
+it before MAP output; successful R1 boundary capture is not evidence of supported
 loop/value resolution. Global initializers or ELF addresses alone do not prove
 a runtime-loaded value.
 

@@ -10,7 +10,7 @@
 #include "AccessMetadata.hpp"
 #include "IrHelpers.hpp"
 
-namespace lat {
+namespace map {
 
 /**
  * @brief Source-level access path에서 한 단계의 field 또는 index 이동을 나타낸다.
@@ -52,4 +52,4 @@ GepAccessDescription describeGepAccess(
   llvm::GEPOperator * GEP, llvm::ScalarEvolution & SE, const NameMap & names,
   const AccessMetadata & metadata, const llvm::Instruction * useSite = nullptr);
 
-}  // namespace lat
+}  // namespace map

@@ -8,16 +8,16 @@
 #include "AccessMetadata.hpp"
 #include "IrHelpers.hpp"
 
-namespace lat {
+namespace map {
 
 /**
- * @brief 모듈의 LLVM IR/debug info에서 LAT root metadata를 수집한다.
+ * @brief 모듈의 LLVM IR/debug info에서 MAP root metadata를 수집한다.
  *
  * 구조체 layout은 ABI 기준 byte offset/size를 사용한다. Debug info가 있으면
  * source-level field name을 사용하고, 없으면 field_N으로 fallback한다.
  *
  * @param M metadata를 수집할 LLVM module
- * @return LAT v2 root metadata
+ * @return MAP v2 root metadata
  */
 AccessMetadata buildAccessMetadata(llvm::Module& M);
 
@@ -38,4 +38,4 @@ AccessMetadata buildAccessMetadata(llvm::Module& M);
 std::string getObjectId(llvm::Value* Ptr, const llvm::Function& Current,
                         const NameMap& names);
 
-}  // namespace lat
+}  // namespace map

@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <vector>
 
-namespace lat {
+namespace map {
 
 struct ArrayMetadata {
     std::vector<int64_t> shape;
     int64_t elem_size = 0;
 };
 
-}  // namespace lat
+}  // namespace map

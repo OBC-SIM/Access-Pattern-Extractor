@@ -5,7 +5,7 @@
 
 using namespace llvm;
 
-namespace lat::index
+namespace map::index
 {
 namespace
 {
@@ -114,4 +114,4 @@ AffineExpression resolveAffine(const SCEV * expression,
   return form;
 }
 
-}  // namespace lat::index
+}  // namespace map::index

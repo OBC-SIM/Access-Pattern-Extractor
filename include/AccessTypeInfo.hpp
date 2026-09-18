@@ -8,7 +8,7 @@
 
 #include "AccessMetadata.hpp"
 
-namespace lat {
+namespace map {
 
 /**
  * @brief LLVM type을 사람이 읽을 수 있는 IR 문자열로 변환한다.
@@ -44,4 +44,4 @@ void fillTypeInfo(ObjectMetadata& object, llvm::Type* Ty, const llvm::DataLayout
  */
 void fillTypeInfo(FieldMetadata& field, llvm::Type* Ty, const llvm::DataLayout& DL);
 
-}  // namespace lat
+}  // namespace map

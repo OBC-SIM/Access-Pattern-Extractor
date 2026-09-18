@@ -2,7 +2,7 @@
 
 #include "AccessBuilder.hpp"
 
-namespace lat::region
+namespace map::region
 {
 
 /**
@@ -24,4 +24,4 @@ std::unique_ptr<Statement> makeRegionAccess(
   const std::set<const llvm::Function *> & inlineFunctions,
   const llvm::Function & function);
 
-}  // namespace lat::region
+}  // namespace map::region

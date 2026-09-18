@@ -3,7 +3,7 @@
 #include "AccessPath.hpp"
 #include "helpers/IndexIrFixture.hpp"
 
-namespace lat::test
+namespace map::test
 {
 namespace
 {
@@ -143,7 +143,7 @@ TEST(IndexResolution, AccessPathAndLegacyIndicesShareOneOffset)
 TEST(IndexResolution, ModuleLoopRetainsDescendingExclusiveBound)
 {
   IndexIr ir(indexLoop("%index = sub i64 %i, 1", "5", "0", "-1", "i64", "sgt"));
-  const auto document = buildLatModule(*ir.module, ir.modules);
+  const auto document = buildMapModule(*ir.module, ir.modules);
   const auto * functions = document.getArray("functions");
   ASSERT_NE(functions, nullptr);
   const auto * body = (*functions)[0].getAsObject()->getArray("body");
@@ -156,4 +156,4 @@ TEST(IndexResolution, ModuleLoopRetainsDescendingExclusiveBound)
 }
 
 }  // namespace
-}  // namespace lat::test
+}  // namespace map::test

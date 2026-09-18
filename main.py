@@ -7,7 +7,7 @@ Usage:
     FILE: .c 또는 .ll 파일. .c 는 clang-14 로 컴파일 후 파이프라인 실행.
 
 Options:
-    --plugin PATH          libLoopAnnotatedTrace.so 경로
+    --plugin PATH          libMemoryAccessPatterns.so 경로
     --casa PATH      casa 실행 파일 경로
     --cache PATH           cache.yaml 경로
     --output DIR           CASA report 출력 디렉터리
@@ -23,8 +23,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 
 _PLUGIN_CANDIDATES = (
-    _REPO_ROOT / "frontend" / "build" / "libLoopAnnotatedTrace.so",
-    _REPO_ROOT / "build" / "libLoopAnnotatedTrace.so",
+    _REPO_ROOT / "frontend" / "build" / "libMemoryAccessPatterns.so",
+    _REPO_ROOT / "build" / "libMemoryAccessPatterns.so",
 )
 _DEFAULT_CASA = _REPO_ROOT / "build" / "casa"
 _DEFAULT_CACHE = _REPO_ROOT / "settings" / "cache.yaml"
@@ -83,7 +83,7 @@ def _json_candidates(ll_path: Path) -> list:
     stem_path = ll_path.with_suffix("")
     return [
         stem_path.parent / (stem_path.name + "_ape.json"),
-        stem_path.parent / (stem_path.name + "_lat.json"),
+        stem_path.parent / (stem_path.name + "_map.json"),
     ]
 
 

@@ -4,7 +4,7 @@
 
 #include "IrHelpers.hpp"
 
-namespace lat::index
+namespace map::index
 {
 
 /** @brief Proven scalar binding and its mathematical integer domain. */
@@ -46,4 +46,4 @@ std::optional<std::string> resolveFormalIndex(llvm::Value * value,
                                               const NameMap & names,
                                               bool unsignedValue);
 
-}  // namespace lat::index
+}  // namespace map::index

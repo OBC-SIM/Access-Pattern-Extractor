@@ -13,7 +13,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
 
-namespace lat
+namespace map
 {
 
 /// Value* → 원본 소스 변수명 맵 (llvm.dbg.value intrinsic 기반)
@@ -47,7 +47,7 @@ std::string getInductionVarName(llvm::Loop * L, llvm::ScalarEvolution & SE,
                                 const NameMap & names);
 
 /**
- * @brief GEP 인덱스 하나를 손실 없이 LAT 인덱스 하나로 변환한다.
+ * @brief GEP 인덱스 하나를 손실 없이 MAP 인덱스 하나로 변환한다.
  *
  * 정수 상수(0 포함), 결속된 IV와 검증된 scalar formal의 선형식을 보존한다.
  * 계수와 복합 항을 버리거나 하나의 식을 여러 차원으로 분리하지 않는다.
@@ -94,7 +94,7 @@ getIndexVars(llvm::GEPOperator * GEP, llvm::ScalarEvolution & SE,
 std::string getBaseName(llvm::Value * Ptr, const NameMap & names);
 
 /**
- * @brief 일반 LLVM Value를 LAT JSON에 기록할 이름으로 변환한다.
+ * @brief 일반 LLVM Value를 MAP JSON에 기록할 이름으로 변환한다.
  *
  * 포인터 값은 배열/스칼라 base 이름으로, 정수 상수는 숫자 문자열로,
  * 그 외 값은 debug name → IR name → IR 슬롯 번호 순으로 변환한다.
@@ -129,4 +129,4 @@ bool hasFunctionAnnotation(llvm::Function & F, llvm::StringRef Annotation);
 ArrayMetadata getArrayMetadata(llvm::GEPOperator * GEP,
                                const llvm::DataLayout & DL);
 
-}  // namespace lat
+}  // namespace map

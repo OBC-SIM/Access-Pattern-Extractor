@@ -4,7 +4,7 @@
 
 #include "IndexIrFixture.hpp"
 
-namespace lat::test
+namespace map::test
 {
 
 /**
@@ -28,4 +28,4 @@ inline void expectIndexRejected(IndexIr & ir, const std::string & reason,
   }
 }
 
-}  // namespace lat::test
+}  // namespace map::test

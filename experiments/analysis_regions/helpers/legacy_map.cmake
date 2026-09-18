@@ -1,6 +1,6 @@
 # Preserve the observed tagged IR while providing a transport-free copy solely
 # for the whole-function control comparison. R2's legacy plugin rejects tags.
-function(run_legacy_lat input)
+function(run_legacy_map input)
     file(READ "${WORK_DIR}/${input}.ll" ir)
     string(REGEX REPLACE ", !yarda\\.region ![0-9]+" "" ir "${ir}")
     string(REPLACE "\"yarda.region\"=\"APE_ANALYZE\"" "" ir "${ir}")

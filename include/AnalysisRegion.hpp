@@ -9,7 +9,7 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/ValueHandle.h"
 
-namespace lat
+namespace map
 {
 
 /** @brief A source-selected region with tracked pre-normalization identities.
@@ -56,4 +56,4 @@ void validateAnalysisRegions(llvm::Module & module,
  */
 bool hasRegionTransport(const llvm::Module & module);
 
-}  // namespace lat
+}  // namespace map

@@ -10,7 +10,7 @@
 
 #include "../include/AccessMetadataBuilder.hpp"
 
-using namespace lat;
+using namespace map;
 using namespace llvm;
 
 static std::string str(llvm::Optional<llvm::StringRef> opt) {

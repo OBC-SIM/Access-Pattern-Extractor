@@ -10,7 +10,7 @@
 
 using namespace llvm;
 
-namespace lat::region
+namespace map::region
 {
 namespace
 {
@@ -110,4 +110,4 @@ std::unique_ptr<Statement> makeRegionAccess(
   return nullptr;
 }
 
-}  // namespace lat::region
+}  // namespace map::region

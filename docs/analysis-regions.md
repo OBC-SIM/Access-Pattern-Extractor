@@ -1,6 +1,6 @@
 # Analysis regions
 
-`yarda_region_lat` compiles C11 source to APE/LAT v2 with one selected region per
+`yarda_region_map` compiles C11 source to APE/MAP v2 with one selected region per
 function. The optional executable shares the LLVM statement/module builders with
 the legacy plugin.
 
@@ -31,12 +31,12 @@ On Ubuntu the additional headers are supplied by `libclang-14-dev`.
 ```sh
 cmake -S . -B build -DYARDA_BUILD_REGION_FRONTEND=ON
 cmake --build build
-build/yarda_region_lat kernel.c kernel.json -- -Iinclude -DBOUND=3
+build/yarda_region_map kernel.c kernel.json -- -Iinclude -DBOUND=3
 ctest --test-dir build --output-on-failure
 ```
 
 These paths assume a standalone frontend checkout. In the parent YARDA build,
-configure at the repository root and use `build/frontend/yarda_region_lat`.
+configure at the repository root and use `build/frontend/yarda_region_map`.
 `YARDA_CLANG_INCLUDE_DIR` can point to separately extracted matching headers.
 When GTest is available, the default build also runs the LLVM-only descriptor
 tests and the legacy plugin's region-rejection CLI test without Clang headers.
@@ -44,7 +44,7 @@ The source frontend tests are enabled with the optional executable.
 
 The compiler owns the entire `clang14-o0-region-v1` pipeline: fresh O0 IR with
 debug information and O0 `optnone` disabled, source/IR boundary matching, marker
-removal, `function(mem2reg),loop-simplify`, descriptor validation, and LAT export.
+removal, `function(mem2reg),loop-simplify`, descriptor validation, and MAP export.
 Loop selection uses saved header identities; newly created scalar/control
 instructions need not carry tags. Pure compiler arithmetic intrinsics such as
 `fmuladd` do not create references. Retained memory/call sites must preserve
@@ -75,13 +75,13 @@ even without a region. With no annotation or region, all emitted definitions
 are validated and exported without gaining an analysis role. Bodies excluded
 from export do not cause control-flow rejection. The source validator records
 body errors and checks them against the same emitted-function selection used
-by the LAT builder, before normalization and output publication.
+by the MAP builder, before normalization and output publication.
 
 Loop start, bound and step must resolve to constants without induction overflow.
-Indices must fit the supported LAT literal/induction-variable/constant-offset
+Indices must fit the supported MAP literal/induction-variable/constant-offset
 representation. Runtime global initializers are not treated as runtime values.
 Pointer reinterpretation, atomics and unsupported memory intrinsics are rejected.
-Runtime-loaded pointer bases are rejected before LAT publication. Globals,
+Runtime-loaded pointer bases are rejected before MAP publication. Globals,
 local objects and formal pointer parameters retain their canonical bindings,
 including parameters used by inline helpers.
 Unresolved or unsupported inputs never fall back to whole-function selection.

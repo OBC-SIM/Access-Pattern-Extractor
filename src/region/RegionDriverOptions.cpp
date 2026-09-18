@@ -4,7 +4,7 @@
 
 #include "llvm/ADT/StringRef.h"
 
-namespace lat::region
+namespace map::region
 {
 
 std::vector<std::string>
@@ -45,4 +45,4 @@ regionCompilerArguments(const std::vector<std::string> & arguments)
   return result;
 }
 
-}  // namespace lat::region
+}  // namespace map::region

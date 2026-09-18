@@ -6,7 +6,7 @@
 
 using namespace llvm;
 
-namespace lat::region
+namespace map::region
 {
 namespace
 {
@@ -85,4 +85,4 @@ LoopBounds resolveLoopBounds(Loop & loop, ScalarEvolution & evolution)
   return result;
 }
 
-}  // namespace lat::region
+}  // namespace map::region

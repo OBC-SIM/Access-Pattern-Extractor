@@ -15,8 +15,8 @@ find_library(REGION_CLANG_CPP NAMES clang-cpp libclang-cpp.so.14
     HINTS ${LLVM_LIBRARY_DIRS} REQUIRED)
 find_library(REGION_LLVM NAMES LLVM-14 LLVM
     HINTS ${LLVM_LIBRARY_DIRS} REQUIRED)
-set(REGION_APE_PLUGIN "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libLoopAnnotatedTrace.so"
-    CACHE FILEPATH "Existing whole-function LAT plugin used for compatibility checks")
+set(REGION_APE_PLUGIN "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/libMemoryAccessPatterns.so"
+    CACHE FILEPATH "Existing whole-function MAP plugin used for compatibility checks")
 
 add_library(region_pragma_probe MODULE pragma_probe.cpp)
 target_include_directories(region_pragma_probe SYSTEM PRIVATE
