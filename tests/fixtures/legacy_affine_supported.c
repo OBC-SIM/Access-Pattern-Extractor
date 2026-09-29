@@ -205,3 +205,22 @@ ANALYZE void triangle_nested(void)
     for (int j = i; j < 4; ++j)
       for (int k = j + 1; k < 4; ++k) triangle_matrix[j][k] = 1;
 }
+
+ANALYZE void triangle_syrk(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = 0; j <= i; ++j) triangle_matrix[i][j] = 1;
+}
+
+ANALYZE void triangle_nussinov(void)
+{
+  for (int i = 3; i >= 0; --i)
+    for (int j = i + 1; j < 4; ++j)
+      for (int k = i + 1; k < j; ++k) triangle_matrix[i][k] = 1;
+}
+
+ANALYZE void triangle_end_descending(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = 3; j >= i; j -= 2) triangle_matrix[i][j] = 1;
+}

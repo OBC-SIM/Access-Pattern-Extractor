@@ -188,6 +188,16 @@ public:
         start_expression_ = std::move(expression);
     }
     int64_t                                        getBound()        const { return bound_; }
+    /** @brief Return the exclusive outer-affine bound, or empty for a constant. */
+    const std::string& getBoundExpression() const { return bound_expression_; }
+    /**
+     * @brief Override the numeric bound with a checked exclusive expression.
+     * @param expression Canonical expression bound to enclosing loop variables.
+     * @return Nothing; the expression is owned by this loop.
+     */
+    void setBoundExpression(std::string expression) {
+        bound_expression_ = std::move(expression);
+    }
     int64_t                                        getStep()         const { return step_; }
     unsigned                                       getDepth()        const { return depth_; }
     const std::vector<std::unique_ptr<Statement>>& getBody()         const { return body_; }
@@ -197,6 +207,7 @@ private:
     int64_t                                start_;
     std::string                            start_expression_;
     int64_t                                bound_;
+    std::string                            bound_expression_;
     int64_t                                step_;
     unsigned                               depth_;
     std::vector<std::unique_ptr<Statement>> body_;

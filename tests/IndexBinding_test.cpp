@@ -159,6 +159,53 @@ TEST(IndexBinding, PreservesFlattenedExpressionAsOneIndex)
   EXPECT_EQ(result.access_path[0].value, "8*i+j");
 }
 
+TEST(IndexBinding, ExportsExclusiveOuterAffineBounds)
+{
+  for (const auto & test : {
+         std::make_pair("slt i64 %j, %i", "i"),
+         std::make_pair("sle i64 %j, %i", "i+1"),
+         std::make_pair("sge i64 %i, %j", "i+1")})
+  {
+    auto source = nestedIndex("%index = add i64 %j, 0", false);
+    const std::string comparison = "slt i64 %j, 3";
+    source.replace(source.find(comparison), comparison.size(), test.first);
+    IndexIr ir(source);
+    const auto document = buildMapModule(*ir.module, ir.modules);
+    const auto * body = (*document.getArray("functions"))[0].getAsObject()
+                         ->getArray("body");
+    const auto * outer = (*body)[0].getAsObject();
+    const auto * inner = (*outer->getArray("body"))[0].getAsObject();
+    EXPECT_EQ(inner->getString("bound"),
+              llvm::Optional<llvm::StringRef>(test.second));
+    EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"j"}));
+  }
+}
+
+TEST(IndexBinding, RejectsSelfDependentLoopEndBeforeResolvingItsRecurrence)
+{
+  IndexIr ir(indexLoop("%index = add i64 %i, 0", "0", "%i"));
+  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+}
+
+TEST(IndexBinding, RejectsOverflowForVariableBoundResidues)
+{
+  auto source = nestedIndex("%index = sext i8 %j to i64", false);
+  for (const auto & replacement : {
+         std::make_pair("phi i64 [0, %entry]", "phi i8 [124, %entry]"),
+         std::make_pair("slt i64 %i, 2", "slt i8 %i, 127"),
+         std::make_pair("phi i64 [0, %inner.entry]", "phi i8 [120, %inner.entry]"),
+         std::make_pair("slt i64 %j, 3", "slt i8 %j, %i"),
+         std::make_pair("add i64 %j, 1", "add i8 %j, 5"),
+         std::make_pair("add i64 %i, 1", "add i8 %i, 1")})
+  {
+    const std::string old = replacement.first;
+    source.replace(source.find(old), old.size(), replacement.second);
+  }
+  IndexIr ir(source);
+  // Bound 124 terminates at 125; the later bound 126 would increment to 130.
+  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+}
+
 TEST(IndexBinding, PreservesActualTwoDimensionalGep)
 {
   IndexIr ir(nestedIndex("", true));

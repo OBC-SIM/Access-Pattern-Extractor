@@ -98,6 +98,15 @@ static std::unique_ptr<map::LoopNest> buildLoopNest(
                                              induction.variable);
     if (!start.terms.empty())
       nest->setStartExpression(index::formatAffine(start));
+    auto bound = index::resolveAffine(induction.bound, SE, names,
+                                      induction.variable);
+    if (!bound.terms.empty())
+    {
+      bound.constant = index::affineInteger(
+        index::affineWide(bound.constant) +
+        index::affineWide(induction.bound_offset));
+      nest->setBoundExpression(index::formatAffine(bound));
+    }
   }
   populateBody(L, SE, depth, *nest, names, inlineFuncs, metadata, current,
                strict);

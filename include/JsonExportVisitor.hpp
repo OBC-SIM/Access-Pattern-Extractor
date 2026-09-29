@@ -74,7 +74,9 @@ public:
             {"start", node.getStartExpression().empty()
                         ? llvm::json::Value(node.getStart())
                         : llvm::json::Value(node.getStartExpression())},
-            {"bound", node.getBound()},
+            {"bound", node.getBoundExpression().empty()
+                        ? llvm::json::Value(node.getBound())
+                        : llvm::json::Value(node.getBoundExpression())},
             {"step",  node.getStep()},
             {"depth", static_cast<int64_t>(node.getDepth())},
             {"body",  std::move(body)}

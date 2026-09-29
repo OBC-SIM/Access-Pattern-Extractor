@@ -10,7 +10,7 @@
 namespace map::region
 {
 
-/** @brief Constant control with an exact or conservatively minimum start. */
+/** @brief Numeric control envelope; affine endpoints are conservative limits. */
 struct LoopBounds
 {
   std::int64_t start;
@@ -24,14 +24,18 @@ struct LoopBounds
  * @param evolution Borrowed whole-function scalar evolution.
  * @param startRange Optional proved signed range of an affine start. Without
  * it, the start must be constant.
- * @return Minimum start, exclusive bound and nonzero signed step. The minimum
- * is for range analysis only when startRange is supplied.
+ * @param boundRange Optional proved signed range of the comparison limit.
+ * Without it, the limit must be constant.
+ * @return Minimum start, exclusive bound and nonzero signed step. For affine
+ * endpoints these are analysis limits, with the bound furthest along step.
  * @throws std::invalid_argument for unresolved or unsupported iteration
  * control.
  */
 LoopBounds resolveLoopBounds(llvm::Loop & loop,
                              llvm::ScalarEvolution & evolution,
                              std::optional<std::pair<std::int64_t, std::int64_t>>
-                               startRange = std::nullopt);
+                               startRange = std::nullopt,
+                             std::optional<std::pair<std::int64_t, std::int64_t>>
+                               boundRange = std::nullopt);
 
 }  // namespace map::region

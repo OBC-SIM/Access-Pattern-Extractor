@@ -38,10 +38,10 @@ PHINode * inductionVariable(const Loop * loop)
                               ? dyn_cast<ICmpInst>(branch->getCondition())
                               : nullptr;
   if (!comparison) return nullptr;
-  Value * variable = comparison->getOperand(0);
-  if (isa<ConstantInt>(variable)) variable = comparison->getOperand(1);
-  auto * phi = dyn_cast<PHINode>(variable);
-  return phi && phi->getParent() == loop->getHeader() ? phi : nullptr;
+  for (auto & operand : comparison->operands())
+    if (auto * phi = dyn_cast<PHINode>(operand.get()))
+      if (phi->getParent() == loop->getHeader()) return phi;
+  return nullptr;
 }
 
 LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
@@ -58,6 +58,14 @@ LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
     throw std::invalid_argument("unsupported affine index: unresolved loop IV");
   const auto * start = recurrence->getStart();
   const auto form = resolveAffine(start, evolution, {}, variable);
+  const auto * comparison = cast<ICmpInst>(
+    cast<BranchInst>(loop->getHeader()->getTerminator())->getCondition());
+  const auto * bound = evolution.getSCEV(comparison->getOperand(
+    comparison->getOperand(0) == variable ? 1 : 0));
+  // Reject self-dependent bounds before affine resolution can revisit this IV.
+  if (!evolution.isLoopInvariant(bound, loop))
+    rejectAffine("loop bound is not invariant in its loop");
+  const auto boundForm = resolveAffine(bound, evolution, {}, variable);
   std::set<std::string> ancestors;
   for (auto * parent = loop->getParentLoop(); parent;
        parent = parent->getParentLoop())
@@ -65,21 +73,29 @@ LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
   for (const auto & term : form.terms)
     if (!ancestors.count(term.first))
       rejectAffine("loop start is not bound to an outer loop");
+  for (const auto & term : boundForm.terms)
+    if (!ancestors.count(term.first))
+      rejectAffine("loop bound is not bound to an outer loop");
   checkAffineRange(form, variable->getType()->getIntegerBitWidth());
+  checkAffineRange(boundForm, variable->getType()->getIntegerBitWidth());
   auto [minimum, maximum] = affineRange(form);
+  const auto [boundMinimum, boundMaximum] = affineRange(boundForm);
   region::LoopBounds bounds;
   try
   {
     bounds = region::resolveLoopBounds(
       *loop, evolution,
-      std::make_pair(affineInteger(minimum), affineInteger(maximum)));
+      std::make_pair(affineInteger(minimum), affineInteger(maximum)),
+      std::make_pair(affineInteger(boundMinimum), affineInteger(boundMaximum)));
   }
   catch (const std::invalid_argument & error)
   {
     throw std::invalid_argument(std::string("unsupported affine index: ") +
                                 error.what());
   }
-  if (minimum == maximum)
+  const auto boundOffset = affineInteger(
+    affineWide(bounds.bound) - (bounds.step > 0 ? boundMaximum : boundMinimum));
+  if (minimum == maximum && boundMinimum == boundMaximum)
   {
     const auto last = lastInductionValue(bounds);
     minimum = APIntOps::smin(minimum, last);
@@ -89,7 +105,7 @@ LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
     maximum = APIntOps::smax(maximum, affineWide(bounds.bound) - 1);
   else if (bounds.step < 0 && maximum.sgt(affineWide(bounds.bound)))
     minimum = APIntOps::smin(minimum, affineWide(bounds.bound) + 1);
-  return {variable, bounds, start, minimum, maximum};
+  return {variable, bounds, start, bound, boundOffset, minimum, maximum};
 }
 
 APInt lastInductionValue(const region::LoopBounds & bounds)
