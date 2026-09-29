@@ -172,3 +172,36 @@ ANALYZE void affine_boundary(void)
   affine_byte(128);
   affine_byte(255);
 }
+
+int triangle_matrix[4][4];
+
+ANALYZE void triangle(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = i; j < 4; ++j) triangle_matrix[i][j] = 1;
+}
+
+ANALYZE void triangle_strict(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = i + 1; j < 4; ++j) triangle_matrix[i][j] = 1;
+}
+
+ANALYZE void triangle_descending(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = i; j >= 0; j -= 2) triangle_matrix[i][j] = 1;
+}
+
+ANALYZE void triangle_scaled(void)
+{
+  for (int i = 0; i < 2; ++i)
+    for (int j = 2 * i + 1; j < 4; j += 2) triangle_matrix[i][j] = 1;
+}
+
+ANALYZE void triangle_nested(void)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = i; j < 4; ++j)
+      for (int k = j + 1; k < 4; ++k) triangle_matrix[j][k] = 1;
+}

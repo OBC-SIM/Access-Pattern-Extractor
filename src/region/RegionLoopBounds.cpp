@@ -31,7 +31,9 @@ void validateInductionRange(const LoopBounds & bounds, unsigned width,
 
 }  // namespace
 
-LoopBounds resolveLoopBounds(Loop & loop, ScalarEvolution & evolution)
+LoopBounds resolveLoopBounds(
+  Loop & loop, ScalarEvolution & evolution,
+  std::optional<std::pair<std::int64_t, std::int64_t>> startRange)
 {
   auto * branch = dyn_cast<BranchInst>(loop.getHeader()->getTerminator());
   auto * comparison = branch && branch->isConditional()
@@ -59,9 +61,13 @@ LoopBounds resolveLoopBounds(Loop & loop, ScalarEvolution & evolution)
   const auto * start = dyn_cast<SCEVConstant>(recurrence->getStart());
   const auto * step =
     dyn_cast<SCEVConstant>(recurrence->getStepRecurrence(evolution));
-  if (!start || !step || bound->getBitWidth() > 64 || step->getAPInt().isZero())
+  if ((!start && !startRange) || !step || bound->getBitWidth() > 64 ||
+      !step->getAPInt().isSignedIntN(64) || step->getAPInt().isZero() ||
+      (start && !start->getAPInt().isSignedIntN(64)))
     throw std::invalid_argument("unresolved region loop start or step");
-  LoopBounds result{start->getAPInt().getSExtValue(), bound->getSExtValue(),
+  LoopBounds result{startRange ? startRange->first
+                               : start->getAPInt().getSExtValue(),
+                    bound->getSExtValue(),
                     step->getAPInt().getSExtValue()};
   const bool increasing =
     predicate == ICmpInst::ICMP_SLT || predicate == ICmpInst::ICMP_SLE ||
@@ -82,6 +88,28 @@ LoopBounds resolveLoopBounds(Loop & loop, ScalarEvolution & evolution)
   }
   validateInductionRange(result, variable->getType()->getIntegerBitWidth(),
                          ICmpInst::isUnsigned(predicate));
+  if (startRange && startRange->first != startRange->second)
+  {
+    const auto width = variable->getType()->getIntegerBitWidth();
+    const APInt maximum(128, static_cast<uint64_t>(startRange->second), true);
+    if (startRange->first > startRange->second || !maximum.isSignedIntN(width))
+      throw std::invalid_argument("region loop start overflows its type");
+    // Different starts can have different residues modulo the step. Bound
+    // the increment after the last body iteration for every such residue.
+    const bool executes = increasing ? result.start < result.bound
+                                    : startRange->second > result.bound;
+    if (executes)
+    {
+      const APInt limit(128, static_cast<uint64_t>(result.bound), true);
+      const APInt stride(128, static_cast<uint64_t>(result.step), true);
+      const auto afterLast = increasing ? limit + stride - 1
+                                        : limit + stride + 1;
+      if (ICmpInst::isUnsigned(predicate)
+            ? (afterLast.isNegative() || !afterLast.isIntN(width))
+            : !afterLast.isSignedIntN(width))
+        throw std::invalid_argument("region loop induction overflows its type");
+    }
+  }
   return result;
 }
 

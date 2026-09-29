@@ -5,6 +5,7 @@
 
 #include "AccessBuilder.hpp"
 #include "index/LoopInduction.hpp"
+#include "index/AffineResolution.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "region/RegionAccessBuilder.hpp"
 #include "region/RegionLoopBounds.hpp"
@@ -90,6 +91,14 @@ static std::unique_ptr<map::LoopNest> buildLoopNest(
   auto nest = std::make_unique<map::LoopNest>(getInductionVarName(L, SE, names),
                                               bounds.start, bounds.bound, depth,
                                               bounds.step);
+  if (!strict)
+  {
+    const auto induction = index::resolveInduction(L, SE);
+    const auto start = index::resolveAffine(induction.start, SE, names,
+                                             induction.variable);
+    if (!start.terms.empty())
+      nest->setStartExpression(index::formatAffine(start));
+  }
   populateBody(L, SE, depth, *nest, names, inlineFuncs, metadata, current,
                strict);
   return nest;

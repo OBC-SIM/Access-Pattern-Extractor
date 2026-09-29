@@ -12,6 +12,9 @@ struct LoopInduction
 {
   llvm::PHINode * variable;
   region::LoopBounds bounds;
+  const llvm::SCEV * start;
+  llvm::APInt minimum;
+  llvm::APInt maximum;
 };
 
 /**
@@ -23,10 +26,10 @@ struct LoopInduction
 llvm::PHINode * inductionVariable(const llvm::Loop * loop);
 
 /**
- * @brief Resolve a constant loop without substituting default start or step.
+ * @brief Resolve constant control with a constant or outer-affine start.
  * @param loop Non-null borrowed loop.
  * @param evolution Analysis belonging to the same function.
- * @return Checked bounds and the exact PHI used to emit the Loop variable.
+ * @return Checked control, borrowed start expression and conservative IV range.
  * @throws std::invalid_argument If bounds, direction or range cannot be proved.
  */
 LoopInduction resolveInduction(llvm::Loop * loop,

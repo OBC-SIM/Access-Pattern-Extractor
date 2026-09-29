@@ -30,15 +30,21 @@ AffineExpression recurrenceForm(const SCEVAddRecExpr & recurrence,
     rejectAffine("nonintegral emitted IV coefficient");
   const auto coefficient = affineInteger(delta.sdiv(stride));
   auto form = resolveAffine(recurrence.getStart(), evolution, names, useSite);
-  const auto first = affineWide(induction.bounds.start);
-  const auto last = lastInductionValue(induction.bounds);
+  const auto start = resolveAffine(induction.start, evolution, names, useSite);
   AffineExpression variable;
   variable.terms.emplace(
     inductionName(loop, evolution, names),
-    AffineTerm{1, APIntOps::smin(first, last), APIntOps::smax(first, last)});
+    AffineTerm{1, induction.minimum, induction.maximum});
   addAffine(form, variable, coefficient);
   form.constant =
-    affineInteger(affineWide(form.constant) - affineWide(coefficient) * first);
+    affineInteger(affineWide(form.constant) -
+                  affineWide(coefficient) * affineWide(start.constant));
+  if (!start.terms.empty())
+  {
+    auto origin = start;
+    origin.constant = 0;
+    addAffine(form, origin, affineInteger(-affineWide(coefficient)));
+  }
   return form;
 }
 

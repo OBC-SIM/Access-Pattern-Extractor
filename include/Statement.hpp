@@ -177,6 +177,16 @@ public:
 
     const std::string&                             getInductionVar() const { return induction_var_; }
     int64_t                                        getStart()        const { return start_; }
+    /** @brief Return the outer-affine start, or empty for a constant start. */
+    const std::string&                             getStartExpression() const { return start_expression_; }
+    /**
+     * @brief Set an outer-affine start in place of the numeric start.
+     * @param expression Canonical expression bound to enclosing loop variables.
+     * @return Nothing; the expression is owned by this loop.
+     */
+    void setStartExpression(std::string expression) {
+        start_expression_ = std::move(expression);
+    }
     int64_t                                        getBound()        const { return bound_; }
     int64_t                                        getStep()         const { return step_; }
     unsigned                                       getDepth()        const { return depth_; }
@@ -185,6 +195,7 @@ public:
 private:
     std::string                            induction_var_;
     int64_t                                start_;
+    std::string                            start_expression_;
     int64_t                                bound_;
     int64_t                                step_;
     unsigned                               depth_;

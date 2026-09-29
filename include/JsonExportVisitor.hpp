@@ -71,7 +71,9 @@ public:
         Result_ = llvm::json::Object{
             {"type",  "Loop"},
             {"var",   node.getInductionVar()},
-            {"start", node.getStart()},
+            {"start", node.getStartExpression().empty()
+                        ? llvm::json::Value(node.getStart())
+                        : llvm::json::Value(node.getStartExpression())},
             {"bound", node.getBound()},
             {"step",  node.getStep()},
             {"depth", static_cast<int64_t>(node.getDepth())},

@@ -4,6 +4,7 @@
 #include <set>
 #include <stdexcept>
 
+#include "AffineResolution.hpp"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 
 using namespace llvm;
@@ -48,24 +49,47 @@ LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
   auto * variable = inductionVariable(loop);
   const auto * recurrence =
     variable ? dyn_cast<SCEVAddRecExpr>(evolution.getSCEV(variable)) : nullptr;
-  const auto * start =
-    recurrence ? dyn_cast<SCEVConstant>(recurrence->getStart()) : nullptr;
   const auto * step =
     recurrence && recurrence->isAffine()
       ? dyn_cast<SCEVConstant>(recurrence->getStepRecurrence(evolution))
       : nullptr;
-  if (!start || !step || !start->getAPInt().isSignedIntN(64) ||
+  if (!recurrence || recurrence->getLoop() != loop || !step ||
       !step->getAPInt().isSignedIntN(64))
     throw std::invalid_argument("unsupported affine index: unresolved loop IV");
+  const auto * start = recurrence->getStart();
+  const auto form = resolveAffine(start, evolution, {}, variable);
+  std::set<std::string> ancestors;
+  for (auto * parent = loop->getParentLoop(); parent;
+       parent = parent->getParentLoop())
+    ancestors.insert(inductionName(parent, evolution, {}));
+  for (const auto & term : form.terms)
+    if (!ancestors.count(term.first))
+      rejectAffine("loop start is not bound to an outer loop");
+  checkAffineRange(form, variable->getType()->getIntegerBitWidth());
+  auto [minimum, maximum] = affineRange(form);
+  region::LoopBounds bounds;
   try
   {
-    return {variable, region::resolveLoopBounds(*loop, evolution)};
+    bounds = region::resolveLoopBounds(
+      *loop, evolution,
+      std::make_pair(affineInteger(minimum), affineInteger(maximum)));
   }
   catch (const std::invalid_argument & error)
   {
     throw std::invalid_argument(std::string("unsupported affine index: ") +
                                 error.what());
   }
+  if (minimum == maximum)
+  {
+    const auto last = lastInductionValue(bounds);
+    minimum = APIntOps::smin(minimum, last);
+    maximum = APIntOps::smax(maximum, last);
+  }
+  else if (bounds.step > 0 && minimum.slt(affineWide(bounds.bound)))
+    maximum = APIntOps::smax(maximum, affineWide(bounds.bound) - 1);
+  else if (bounds.step < 0 && maximum.sgt(affineWide(bounds.bound)))
+    minimum = APIntOps::smin(minimum, affineWide(bounds.bound) + 1);
+  return {variable, bounds, start, minimum, maximum};
 }
 
 APInt lastInductionValue(const region::LoopBounds & bounds)

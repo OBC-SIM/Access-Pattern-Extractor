@@ -184,8 +184,13 @@ Runtime 계수 `n*i`, 나눗셈·나머지와 비선형 식은 정확한 선형�
 범위여야 합니다. Scalar formal 산술도 원래 폭에서 값 보존을 증명해야 하므로
 모든 runtime 인자 수식이 지원되는 것은 아닙니다.
 
-지원 Loop는 header의 정수 비교로 제어되며, 동일 PHI의 상수 start·bound·
-0이 아닌 step과 정수 범위를 증명할 수 있어야 합니다. `bound`는 반복 횟수가
+지원 Loop는 header의 정수 비교로 제어되며, 동일 PHI의 상수 bound·
+0이 아닌 상수 step과 정수 범위를 증명할 수 있어야 합니다. 시작값은 상수 또는
+바깥 Loop IV의 affine 식(`i`, `i+1`, `2*i+1` 등)을 지원합니다. 상수 시작값은
+JSON `start`에 정수로, 바깥 IV에 의존하는 시작값은 정규화된 문자열로 기록합니다.
+C++ backend는 루프에 진입할 때마다 현재 바깥 IV 값으로 시작식과 반복 횟수를
+평가하므로 삼각형 영역과 0회 반복을 보존합니다. 종료값이 바깥 IV에 의존하거나
+시작값이 미결속 runtime 인자·비선형식인 경우는 지원하지 않습니다. `bound`는 반복 횟수가
 아닌 배타적 종료 값입니다. 알 수 없는 값에 0/1을 대신 넣거나 loop를 생략하지
 않습니다. Narrowing과 zero extension은 값이 보존됨을 증명한 경우만 허용하고,
 signed/unsigned 경계나 wrap을 증명할 수 없으면 거부합니다.
@@ -204,7 +209,8 @@ MAP v2 JSON 구조를 유지하지만, 새 계수·다중 변수 식에는 H2-B 
 필요합니다. 구 reader는 문자열 trace에서 식을 그대로 반환하고 주소 분석에서
 거부합니다. 구 reader는 schema 버전도 검사하지 않으므로 버전 번호만 올려
 호환성을 보장할 수 없습니다. 새 입력에는 frontend/backend를 함께 갱신하세요.
-R2 strict 구간의 scaled-index 거부 계약은 유지합니다.
+R2 strict 구간의 상수 시작값·scaled-index 거부 계약은 유지합니다.
+문자열 `start`에는 대응하는 C++ backend가 필요하며, 기존 Python reader는 지원하지 않습니다.
 
 `YardaIndexTests`와 `LegacyAffineRejection_*`는 region 옵션 OFF에서도 실행됩니다.
 부모 저장소의 `yarda_affine_index_tests`는 같은 C의 debug/no-debug MAP와 ET_EXEC을

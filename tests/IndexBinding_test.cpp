@@ -60,6 +60,93 @@ std::string nestedIndex(const std::string & body, bool matrix)
          " br label %outer\nexit: ret void\n}\n";
 }
 
+std::string triangularIndex(const std::string & body,
+                             const std::string & initial = "%i",
+                             const std::string & setup = "")
+{
+  auto source = nestedIndex(body, false);
+  const std::string entry = "inner.entry: br";
+  source.replace(source.find(entry), entry.size(),
+                 "inner.entry: " + setup + "\n br");
+  const std::string start = "[0, %inner.entry]";
+  source.replace(source.find(start), start.size(),
+                 "[" + initial + ", %inner.entry]");
+  return source;
+}
+
+TEST(IndexBinding, PreservesTriangularInductionAndScaledIndex)
+{
+  for (const auto * start : {"%i", "%first"})
+  {
+    IndexIr ir(triangularIndex("%index = mul i64 %j, 2", start,
+                               "%first = add i64 %i, 1"));
+    EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*j"}));
+  }
+}
+
+TEST(IndexBinding, RelatesSecondaryInductionToTriangularStart)
+{
+  auto source = triangularIndex(
+    "%nextother = add i64 %other, 2\n%index = add i64 %other, 0");
+  source.insert(source.find(" %j = phi"),
+                " %other = phi i64 [0, %inner.entry], [%nextother, %body]\n");
+  IndexIr ir(source);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"-2*i+2*j"}));
+}
+
+TEST(IndexBinding, RejectsNonlinearTriangularStart)
+{
+  IndexIr ir(triangularIndex("%index = add i64 %j, 0", "%first",
+                             "%first = mul i64 %i, %i"));
+  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+}
+
+TEST(IndexBinding, RejectsWrappingTriangularStart)
+{
+  auto source = triangularIndex("%index = sext i8 %j to i64", "%first",
+                                 "%first = add i8 %i, 127");
+  for (const auto * instruction : {"%i = phi i64", "%j = phi i64",
+                                  "icmp slt i64", "add i64 %i", "add i64 %j"})
+  {
+    std::string old = instruction;
+    auto replacement = old;
+    replacement.replace(replacement.find("i64"), 3, "i8");
+    for (auto pos = source.find(old); pos != std::string::npos;
+         pos = source.find(old))
+      source.replace(pos, old.size(), replacement);
+  }
+  IndexIr ir(source);
+  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+}
+
+TEST(IndexBinding, RejectsOverflowForIntermediateStartResidues)
+{
+  IndexIr ir(R"(@a = global [64 x i32] zeroinitializer
+    define void @kernel() {
+    entry: br label %outer
+    outer:
+      %i = phi i8 [120, %entry], [%inext, %latch]
+      %it = icmp slt i8 %i, 124
+      br i1 %it, label %inner.entry, label %exit
+    inner.entry: br label %inner
+    inner:
+      %j = phi i8 [%i, %inner.entry], [%jnext, %body]
+      %jt = icmp slt i8 %j, 126
+      br i1 %jt, label %body, label %latch
+    body:
+      %index = sext i8 %j to i64
+      %p = getelementptr [64 x i32], [64 x i32]* @a, i64 0, i64 %index
+      store i32 1, i32* %p
+      %jnext = add i8 %j, 3
+      br label %inner
+    latch:
+      %inext = add i8 %i, 1
+      br label %outer
+    exit: ret void
+    })");
+  EXPECT_THROW(ir.resolve(), std::invalid_argument);
+}
+
 TEST(IndexBinding, PreservesFlattenedExpressionAsOneIndex)
 {
   IndexIr ir(nestedIndex(
