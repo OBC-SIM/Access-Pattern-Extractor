@@ -28,6 +28,7 @@ add_library(MapBuilders OBJECT
     src/index/ScalarFormal.cpp
     src/StatementBuilder.cpp
     src/MapModuleBuilder.cpp
+    src/InstructionCounts.cpp
     src/AnalysisRegion.cpp
     src/region/RegionLoopBounds.cpp
     src/region/RegionAccessBuilder.cpp
@@ -105,6 +106,7 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME YardaIndexTests COMMAND YardaIndexTests)
     add_executable(YardaRegionIrTests
         tests/helpers/RegionTestMain.cpp
+        tests/InstructionCounts_test.cpp
         tests/AnalysisRegion_test.cpp)
     target_link_libraries(YardaRegionIrTests PRIVATE
         MapBuilders ${GTEST_LIB} ${LLVM_REGION_TEST_LIBS} pthread)

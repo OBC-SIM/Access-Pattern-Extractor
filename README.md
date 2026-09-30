@@ -106,6 +106,23 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 
 ### Function body nodes
 
+Each exported function also carries optional `ir_instructions` metadata,
+version `1`, at the MAP extraction IR stage. An `exact` model contains `blocks`
+with a unique ordinal `id`, display `name`, uint64 `executions`, and static
+`opcodes` counts. Unnamed blocks use an empty display name; consumers use `id`
+for identity. Debug/lifetime intrinsics are excluded; PHIs and terminators are
+included, and calls count once without counting callee bodies. The model has
+`scope: function-exclusive`, `basis: map-extraction-ir`, and
+`excluded: debug-and-lifetime-intrinsics`.
+
+Counts describe one normal invocation and are proved from single-path control
+flow and constant SCEV backedge counts. An unprovable count or a selected region
+produces `status: unsupported` and `reason`, without changing memory extraction
+or fabricating a zero count. Static counts include unreachable blocks, which
+have zero executions. See the parent backend's `--analysis ir-instructions`
+mode to aggregate the model without expanding traces. Previously generated MAP
+documents must be regenerated to obtain this metadata.
+
 | 노드 타입 | 주요 필드 | 설명 |
 |-----------|-----------|------|
 | Function wrapper | `function`, `params`, `annotations`, `body` | 함수 이름·파라미터·본문 |

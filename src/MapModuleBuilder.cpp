@@ -4,6 +4,7 @@
 
 #include "AccessMetadataBuilder.hpp"
 #include "IrHelpers.hpp"
+#include "InstructionCounts.hpp"
 #include "JsonExportVisitor.hpp"
 #include "StatementBuilder.hpp"
 
@@ -95,6 +96,10 @@ llvm::json::Object buildMapModule(Module & M, ModuleAnalysisManager & MAM,
     funcEntry["params"] = std::move(params);
     funcEntry["annotations"] = std::move(annotations);
     funcEntry["body"] = std::move(bodyJson);
+    funcEntry["ir_instructions"] = selection
+      ? llvm::json::Object{{"version", 1}, {"status", "unsupported"},
+                            {"reason", "IR counting requires a whole function"}}
+      : buildInstructionCounts(F, FAM);
     moduleFuncs.push_back(std::move(funcEntry));
   }
 
