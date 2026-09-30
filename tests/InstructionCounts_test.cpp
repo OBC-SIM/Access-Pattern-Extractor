@@ -57,6 +57,8 @@ TEST(InstructionCounts, PretestHeaderIncludesFinalFailedCondition)
   EXPECT_EQ(executions(result, "header"), 4U);
   EXPECT_EQ(executions(result, "body"), 3U);
   EXPECT_EQ(executions(result, "exit"), 1U);
+  for (const auto & block : *result.getArray("blocks"))
+    EXPECT_EQ(block.getAsObject()->getObject("opcodes")->get("phi"), nullptr);
 }
 
 TEST(InstructionCounts, ZeroTripStillExecutesHeaderAndReturn)
@@ -140,6 +142,13 @@ entry:
 })");
   const auto * counts =
     result.getArray("blocks")->front().getAsObject()->getObject("opcodes");
+  const auto * calls =
+    result.getArray("blocks")->front().getAsObject()->getArray("calls");
+  ASSERT_NE(calls, nullptr);
+  ASSERT_EQ(calls->size(), 1U);
+  EXPECT_EQ(calls->front().getAsObject()->getString("callee").getValueOr(""),
+            "helper");
+  EXPECT_EQ(calls->front().getAsObject()->getBoolean("inline"), false);
   EXPECT_EQ(*counts->get("call")->getAsUINT64(), 1);
   EXPECT_EQ(*counts->get("alloca")->getAsUINT64(), 1);
   EXPECT_EQ(*counts->get("ret")->getAsUINT64(), 1);

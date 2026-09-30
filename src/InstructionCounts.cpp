@@ -5,6 +5,7 @@
 #include <set>
 #include <stdexcept>
 
+#include "IrHelpers.hpp"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -103,8 +104,9 @@ private:
 bool excluded(const Instruction & instruction)
 {
   const auto * intrinsic = dyn_cast<IntrinsicInst>(&instruction);
-  return intrinsic && (isa<DbgInfoIntrinsic>(intrinsic) ||
-                       intrinsic->isLifetimeStartOrEnd());
+  return isa<PHINode>(instruction) ||
+         (intrinsic && (isa<DbgInfoIntrinsic>(intrinsic) ||
+                        intrinsic->isLifetimeStartOrEnd()));
 }
 
 }  // namespace
@@ -112,10 +114,10 @@ bool excluded(const Instruction & instruction)
 llvm::json::Object buildInstructionCounts(Function & function,
                                           FunctionAnalysisManager & analyses)
 {
-  llvm::json::Object result{{"version", 1},
+  llvm::json::Object result{{"version", 2},
                             {"scope", "function-exclusive"},
                             {"basis", "map-extraction-ir"},
-                            {"excluded", "debug-and-lifetime-intrinsics"}};
+                            {"excluded", "phi-debug-and-lifetime-intrinsics"}};
   try
   {
     auto & loops = analyses.getResult<LoopAnalysis>(function);
@@ -127,15 +129,32 @@ llvm::json::Object buildInstructionCounts(Function & function,
     for (const auto & block : function)
     {
       std::map<std::string, std::uint64_t> counts;
+      llvm::json::Array calls;
       for (const auto & instruction : block)
-        if (!excluded(instruction)) ++counts[instruction.getOpcodeName()];
+      {
+        if (excluded(instruction)) continue;
+        ++counts[instruction.getOpcodeName()];
+        if (const auto * call = dyn_cast<CallBase>(&instruction))
+        {
+          auto * callee =
+            dyn_cast<Function>(call->getCalledOperand()->stripPointerCasts());
+          const bool expand =
+            callee && (hasFunctionAnnotation(*callee, "ape.inline") ||
+                       hasFunctionAnnotation(*callee, "yard.inline"));
+          calls.push_back(llvm::json::Object{
+            {"callee", callee ? llvm::json::Value(callee->getName().str())
+                              : llvm::json::Value(nullptr)},
+            {"inline", expand}});
+        }
+      }
       llvm::json::Object opcodes;
       for (const auto & [opcode, count] : counts) opcodes[opcode] = count;
       blocks.push_back(
         llvm::json::Object{{"id", ordinal++},
                            {"name", block.getName().str()},
                            {"executions", execution.counts[&block]},
-                           {"opcodes", std::move(opcodes)}});
+                           {"opcodes", std::move(opcodes)},
+                           {"calls", std::move(calls)}});
     }
     result["status"] = "exact";
     result["blocks"] = std::move(blocks);

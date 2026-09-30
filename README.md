@@ -107,13 +107,17 @@ source type 이름을 확인할 수 있으면 `source_type`도 출력합니다.
 ### Function body nodes
 
 Each exported function also carries optional `ir_instructions` metadata,
-version `1`, at the MAP extraction IR stage. An `exact` model contains `blocks`
+version `2`, at the MAP extraction IR stage. An `exact` model contains `blocks`
 with a unique ordinal `id`, display `name`, uint64 `executions`, and static
-`opcodes` counts. Unnamed blocks use an empty display name; consumers use `id`
-for identity. Debug/lifetime intrinsics are excluded; PHIs and terminators are
-included, and calls count once without counting callee bodies. The model has
+`opcodes` counts, plus a `calls` array with one entry per counted call site.
+Each entry records `callee` (a direct function name, or null for an indirect call)
+and `inline` (whether the target carries an inline annotation). Unnamed blocks
+use an empty display name; consumers use `id` for identity. PHIs and debug/lifetime
+intrinsics are excluded; terminators and remaining calls count once. Each function's
+model excludes callee bodies; the backend composes inline callees using the block's
+execution count. The model has
 `scope: function-exclusive`, `basis: map-extraction-ir`, and
-`excluded: debug-and-lifetime-intrinsics`.
+`excluded: phi-debug-and-lifetime-intrinsics`.
 
 Counts describe one normal invocation and are proved from single-path control
 flow and constant SCEV backedge counts. An unprovable count or a selected region
