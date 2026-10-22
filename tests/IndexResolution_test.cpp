@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include "../src/region/RegionLoopBounds.hpp"
+#include "AccessMetadataBuilder.hpp"
 #include "AccessPath.hpp"
+#include "StatementBuilder.hpp"
 #include "helpers/IndexIrFixture.hpp"
 
 namespace map::test
@@ -130,6 +132,28 @@ TEST(IndexResolution, RejectsUnknownStep)
 {
   IndexIr ir(indexLoop("%index = add i64 %i, 0", "0", "4", "%n"));
   expectRejected(ir);
+}
+
+TEST(IndexResolution, StrictRuntimeBoundRetainsRegionDiagnostic)
+{
+  auto source = indexLoop("%index = add i64 %i, 0", "0", "%limit");
+  source.insert(0, "@limit = global i64 4\n");
+  source.insert(source.find(" %test ="), " %limit = load i64, i64* @limit\n");
+  IndexIr ir(source);
+  auto & function = *ir.module->getFunction("kernel");
+  auto & loops = ir.functions.getResult<llvm::LoopAnalysis>(function);
+  std::vector<std::unique_ptr<Statement>> statements;
+  try
+  {
+    buildRootStatements(function, loops, ir.evolution(), {}, {},
+                        buildAccessMetadata(*ir.module), statements, nullptr,
+                        true);
+    FAIL() << "runtime loop bound accepted";
+  }
+  catch (const std::invalid_argument & error)
+  {
+    EXPECT_STREQ(error.what(), "unresolved or unsupported region loop bound");
+  }
 }
 
 TEST(IndexResolution, AccessPathAndLegacyIndicesShareOneOffset)

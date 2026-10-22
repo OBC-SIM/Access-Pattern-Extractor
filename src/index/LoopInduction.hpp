@@ -7,7 +7,7 @@
 namespace map::index
 {
 
-/** @brief A checked emitted loop and its borrowed controlling PHI. */
+/** @brief Source induction proof and an optional emitted iteration counter. */
 struct LoopInduction
 {
   llvm::PHINode * variable;
@@ -17,6 +17,8 @@ struct LoopInduction
   std::int64_t bound_offset;
   llvm::APInt minimum;
   llvm::APInt maximum;
+  // Present only when all recurrence users share a unit iteration coordinate.
+  std::optional<std::int64_t> emitted_iteration_count;
 };
 
 /**
@@ -32,7 +34,7 @@ llvm::PHINode * inductionVariable(const llvm::Loop * loop);
  * @param loop Non-null borrowed loop.
  * @param evolution Analysis belonging to the same function.
  * @return Checked control, borrowed endpoints, exclusive-bound adjustment and
- * conservative IV range.
+ * conservative source IV range, with optional unit-counter trip count.
  * @throws std::invalid_argument If bounds, direction or range cannot be proved.
  */
 LoopInduction resolveInduction(llvm::Loop * loop,

@@ -23,8 +23,9 @@ TEST(IndexAffine, RejectsPointerToIntegerIndex)
 
 TEST(IndexAffine, RejectsPointerToIntegerTermCombinedWithInduction)
 {
-  auto source = indexLoop("%address = ptrtoint i32* %source to i64\n"
-                          "%index = add i64 %address, %i");
+  auto source = indexLoop(
+    "%address = ptrtoint i32* %source to i64\n"
+    "%index = add i64 %address, %i");
   source.replace(source.find("i64 %n"), 6, "i64 %n, i32* %source");
   IndexIr ir(source);
   expectIndexRejected(ir, "expression is outside the affine grammar");
@@ -37,21 +38,140 @@ TEST(IndexAffine, PreservesScaleOnDescendingNonunitInduction)
   EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"2*i+1"}));
 }
 
-TEST(IndexAffine, RejectsNonintegralRelationToEmittedInduction)
+TEST(IndexAffine, NormalizesNonintegralSecondaryInductionToIterationNumber)
 {
   auto source =
     indexLoop("%other = add i64 %j, 1\n%index = add i64 %j, 0", "0", "6", "2");
   source.insert(source.find(" %i = phi"),
                 " %j = phi i64 [0, %entry], [%other, %body]\n");
   IndexIr ir(source);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"i"}));
+  const auto document = buildMapModule(*ir.module, ir.modules);
+  const auto * function = (*document.getArray("functions"))[0].getAsObject();
+  const auto * loop = (*function->getArray("body"))[0].getAsObject();
+  EXPECT_EQ(loop->getInteger("start"), llvm::Optional<int64_t>(0));
+  EXPECT_EQ(loop->getInteger("bound"), llvm::Optional<int64_t>(3));
+  EXPECT_EQ(loop->getInteger("step"), llvm::Optional<int64_t>(1));
+}
+
+TEST(IndexAffine, NormalizesBothInductionsAndPreservesDescendingOrigin)
+{
+  auto source = indexLoop("%other = add i64 %j, 1\n%index = add i64 %j, %i",
+                          "7", "0", "-3", "i64", "sgt");
+  source.insert(source.find(" %i = phi"),
+                " %j = phi i64 [2, %entry], [%other, %body]\n");
+  IndexIr ir(source);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"-2*i+9"}));
+  const auto document = buildMapModule(*ir.module, ir.modules);
+  const auto * function = (*document.getArray("functions"))[0].getAsObject();
+  const auto * loop = (*function->getArray("body"))[0].getAsObject();
+  EXPECT_EQ(loop->getInteger("start"), llvm::Optional<int64_t>(0));
+  EXPECT_EQ(loop->getInteger("bound"), llvm::Optional<int64_t>(3));
+  EXPECT_EQ(loop->getInteger("step"), llvm::Optional<int64_t>(1));
+}
+
+TEST(IndexAffine, IgnoresFloatingAccumulatorWhenSelectingUnitCounter)
+{
+  auto source = indexLoop(
+    "%other = add i64 %j, 1\n"
+    "%sum = fadd float %acc, 1.0\n"
+    "%index = add i64 %j, 0",
+    "0", "6", "2");
+  source.insert(source.find(" %i = phi"),
+                " %acc = phi float [0.0, %entry], [%sum, %body]\n"
+                " %j = phi i64 [0, %entry], [%other, %body]\n");
+  IndexIr ir(source);
+  EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"i"}));
+}
+
+TEST(IndexAffine, NormalizesNotEqualLoopWithSecondaryInduction)
+{
+  for (const auto & direction : {1, -1})
+  {
+    auto source =
+      indexLoop("%other = add i64 %j, 1\n%index = add i64 %j, 0",
+                direction > 0 ? "0" : "8", direction > 0 ? "8" : "0",
+                direction > 0 ? "2" : "-2", "i64", "ne");
+    source.insert(source.find(" %i = phi"),
+                  " %j = phi i64 [0, %entry], [%other, %body]\n");
+    IndexIr ir(source);
+    EXPECT_EQ(ir.resolve(), (std::vector<std::string>{"i"}));
+    const auto document = buildMapModule(*ir.module, ir.modules);
+    const auto * function = (*document.getArray("functions"))[0].getAsObject();
+    const auto * loop = (*function->getArray("body"))[0].getAsObject();
+    EXPECT_EQ(loop->getInteger("start"), llvm::Optional<int64_t>(0));
+    EXPECT_EQ(loop->getInteger("bound"), llvm::Optional<int64_t>(4));
+    EXPECT_EQ(loop->getInteger("step"), llvm::Optional<int64_t>(1));
+  }
+}
+
+TEST(IndexAffine, RejectsNonintegralSecondaryInductionWithOuterAffineEndpoints)
+{
+  IndexIr ir(R"(@a = global [64 x i32] zeroinitializer
+    define void @kernel() {
+    entry: br label %outer
+    outer:
+      %i = phi i64 [0, %entry], [%nexti, %latch]
+      %outertest = icmp slt i64 %i, 3
+      br i1 %outertest, label %pre, label %exit
+    pre:
+      %end = add i64 %i, 6
+      br label %inner
+    inner:
+      %k = phi i64 [%i, %pre], [%nextk, %body]
+      %m = phi i64 [0, %pre], [%nextm, %body]
+      %test = icmp slt i64 %k, %end
+      br i1 %test, label %body, label %latch
+    body:
+      %index = add i64 %m, 0
+      %p = getelementptr [64 x i32], [64 x i32]* @a, i64 0, i64 %index
+      store i32 1, i32* %p
+      %nextk = add i64 %k, 2
+      %nextm = add i64 %m, 1
+      br label %inner
+    latch:
+      %nexti = add i64 %i, 1
+      br label %outer
+    exit: ret void
+    })");
   expectIndexRejected(ir, "nonintegral emitted IV coefficient");
+}
+
+TEST(IndexAffine, NormalizedCounterHandlesEmptyAndSingleIterationLoops)
+{
+  for (const auto * start : {"6", "4"})
+  {
+    auto source = indexLoop("%other = add i64 %j, 1\n%index = add i64 %j, 0",
+                            start, "6", "2");
+    source.insert(source.find(" %i = phi"),
+                  " %j = phi i64 [0, %entry], [%other, %body]\n");
+    IndexIr ir(source);
+    const auto document = buildMapModule(*ir.module, ir.modules);
+    const auto * function = (*document.getArray("functions"))[0].getAsObject();
+    const auto * loop = (*function->getArray("body"))[0].getAsObject();
+    EXPECT_EQ(loop->getInteger("start"), llvm::Optional<int64_t>(0));
+    EXPECT_EQ(loop->getInteger("bound"),
+              llvm::Optional<int64_t>(std::string(start) == "6" ? 0 : 1));
+    EXPECT_EQ(loop->getInteger("step"), llvm::Optional<int64_t>(1));
+  }
+}
+
+TEST(IndexAffine, NormalizedCounterDoesNotHideSecondaryInductionWrap)
+{
+  auto source = indexLoop("%other = add i8 %j, 1\n%index = sext i8 %j to i64",
+                          "0", "6", "2");
+  source.insert(source.find(" %i = phi"),
+                " %j = phi i8 [127, %entry], [%other, %body]\n");
+  IndexIr ir(source);
+  expectIndexRejected(ir, "index may wrap or narrow");
 }
 
 TEST(IndexAffine, RejectsScaledSignedNarrowing)
 {
-  IndexIr ir(indexLoop("%scaled = mul i64 %i, 2\n"
-                       "%index = trunc i64 %scaled to i8",
-                       "63", "66", "1", "i64", "slt", "i8"));
+  IndexIr ir(
+    indexLoop("%scaled = mul i64 %i, 2\n"
+              "%index = trunc i64 %scaled to i8",
+              "63", "66", "1", "i64", "slt", "i8"));
   expectIndexRejected(ir, "index may wrap or narrow");
 }
 

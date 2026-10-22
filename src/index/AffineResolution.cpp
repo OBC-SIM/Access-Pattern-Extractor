@@ -25,6 +25,17 @@ AffineExpression recurrenceForm(const SCEVAddRecExpr & recurrence,
     dyn_cast<SCEVConstant>(recurrence.getStepRecurrence(evolution));
   if (!step) rejectAffine("runtime-dependent coefficient");
   const auto delta = affineWide(affineInteger(step->getAPInt()));
+  if (induction.emitted_iteration_count)
+  {
+    auto form = resolveAffine(recurrence.getStart(), evolution, names, useSite);
+    AffineExpression variable;
+    const auto count = *induction.emitted_iteration_count;
+    variable.terms.emplace(
+      inductionName(loop, evolution, names),
+      AffineTerm{1, affineWide(0), affineWide(count > 0 ? count - 1 : 0)});
+    addAffine(form, variable, affineInteger(delta));
+    return form;
+  }
   const auto stride = affineWide(induction.bounds.step);
   if (stride.isZero() || !delta.srem(stride).isZero())
     rejectAffine("nonintegral emitted IV coefficient");

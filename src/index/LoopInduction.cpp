@@ -14,6 +14,32 @@ namespace map::index
 namespace
 {
 
+std::optional<int64_t> iterationCount(Loop & loop, ScalarEvolution & evolution,
+                                      const region::LoopBounds & bounds,
+                                      bool constantEndpoints)
+{
+  if (!constantEndpoints || bounds.step == 1 || bounds.step == -1)
+    return std::nullopt;
+  const auto stride = affineWide(bounds.step);
+  bool needed = false;
+  for (auto & phi : loop.getHeader()->phis())
+  {
+    if (!evolution.isSCEVable(phi.getType())) continue;
+    const auto * recurrence = dyn_cast<SCEVAddRecExpr>(evolution.getSCEV(&phi));
+    if (!recurrence || recurrence->getLoop() != &loop ||
+        !recurrence->isAffine())
+      continue;
+    const auto * delta =
+      dyn_cast<SCEVConstant>(recurrence->getStepRecurrence(evolution));
+    if (!delta || !delta->getAPInt().isSignedIntN(64)) continue;
+    needed |=
+      phi.getType()->isPointerTy() ||
+      !affineWide(affineInteger(delta->getAPInt())).srem(stride).isZero();
+  }
+  if (!needed) return std::nullopt;
+  return affineInteger(region::tripCount(bounds));
+}
+
 std::string inlineFunctionPrefix(Function & current)
 {
   bool hasInline = false;
@@ -105,20 +131,17 @@ LoopInduction resolveInduction(Loop * loop, ScalarEvolution & evolution)
     maximum = APIntOps::smax(maximum, affineWide(bounds.bound) - 1);
   else if (bounds.step < 0 && maximum.sgt(affineWide(bounds.bound)))
     minimum = APIntOps::smin(minimum, affineWide(bounds.bound) + 1);
-  return {variable, bounds, start, bound, boundOffset, minimum, maximum};
+  const auto count = iterationCount(
+    *loop, evolution, bounds, form.terms.empty() && boundForm.terms.empty());
+  return {variable, bounds, start, bound, boundOffset, minimum, maximum, count};
 }
 
 APInt lastInductionValue(const region::LoopBounds & bounds)
 {
   const APInt start(128, static_cast<uint64_t>(bounds.start), true);
-  const APInt bound(128, static_cast<uint64_t>(bounds.bound), true);
   const APInt step(128, static_cast<uint64_t>(bounds.step), true);
-  const bool increasing = bounds.step > 0;
-  if ((increasing && start.sge(bound)) || (!increasing && start.sle(bound)))
-    return start;
-  const auto distance = increasing ? bound - start : start - bound;
-  const auto magnitude = increasing ? step : -step;
-  const auto count = (distance + magnitude - 1).udiv(magnitude);
+  const auto count = region::tripCount(bounds);
+  if (count.isZero()) return start;
   return start + (count - 1) * step;
 }
 

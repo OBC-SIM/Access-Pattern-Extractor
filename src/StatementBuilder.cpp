@@ -86,14 +86,17 @@ static std::unique_ptr<map::LoopNest> buildLoopNest(
   const std::set<const Function *> & inlineFuncs,
   const map::AccessMetadata & metadata, const Function & current, bool strict)
 {
-  const auto bounds = strict ? region::resolveLoopBounds(*L, SE)
-                             : index::resolveInduction(L, SE).bounds;
+  auto bounds = strict ? region::resolveLoopBounds(*L, SE)
+                       : region::LoopBounds{};
+  const auto induction = index::resolveInduction(L, SE);
+  if (!strict) bounds = induction.bounds;
+  if (induction.emitted_iteration_count)
+    bounds = {0, *induction.emitted_iteration_count, 1};
   auto nest = std::make_unique<map::LoopNest>(getInductionVarName(L, SE, names),
                                               bounds.start, bounds.bound, depth,
                                               bounds.step);
-  if (!strict)
+  if (!strict && !induction.emitted_iteration_count)
   {
-    const auto induction = index::resolveInduction(L, SE);
     const auto start = index::resolveAffine(induction.start, SE, names,
                                              induction.variable);
     if (!start.terms.empty())

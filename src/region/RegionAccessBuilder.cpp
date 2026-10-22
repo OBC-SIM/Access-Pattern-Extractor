@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "../index/LoopInduction.hpp"
 #include "RegionInstructions.hpp"
 #include "RegionLoopBounds.hpp"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
@@ -28,6 +29,14 @@ void validateIndex(Value * value, ScalarEvolution & evolution,
     dyn_cast<SCEVConstant>(recurrence->getStepRecurrence(evolution));
   auto * loop = const_cast<Loop *>(recurrence->getLoop());
   const auto bounds = resolveLoopBounds(*loop, evolution);
+  if (start && step &&
+      index::resolveInduction(loop, evolution).emitted_iteration_count)
+  {
+    // The loop and all of its recurrences use the same unit counter. Resolve
+    // with the ordinary range/scope proof instead of comparing to the old IV.
+    resolveIndex(value, evolution, names);
+    return;
+  }
   if (!start || !step || step->getAPInt().getSExtValue() != bounds.step)
     throw std::invalid_argument("unsupported scaled region index");
   const auto resolved = resolveIndex(value, evolution, names);
