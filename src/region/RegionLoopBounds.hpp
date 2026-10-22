@@ -10,13 +10,22 @@
 namespace map::region
 {
 
-/** @brief Numeric control envelope; affine endpoints are conservative limits. */
+/** @brief Numeric control envelope; affine endpoints are conservative limits.
+ */
 struct LoopBounds
 {
   std::int64_t start;
   std::int64_t bound;
   std::int64_t step;
 };
+
+/**
+ * @brief Compute iterations for an exclusive-bound, nonzero-step envelope.
+ * @param bounds Validated numeric control with its comparison direction.
+ * @return Nonnegative 128-bit count; zero when the body never executes.
+ * @note Exact for constant endpoints. An affine envelope is only a bound.
+ */
+llvm::APInt tripCount(const LoopBounds & bounds);
 
 /**
  * @brief Resolve a finite canonical for loop without fallback sentinel values.
@@ -28,14 +37,16 @@ struct LoopBounds
  * Without it, the limit must be constant.
  * @return Minimum start, exclusive bound and nonzero signed step. For affine
  * endpoints these are analysis limits, with the bound furthest along step.
+ * @note Not-equal continuation requires singleton endpoints reachable by exact
+ * signed steps without wrapping; equal endpoints represent zero iterations.
  * @throws std::invalid_argument for unresolved or unsupported iteration
  * control.
  */
-LoopBounds resolveLoopBounds(llvm::Loop & loop,
-                             llvm::ScalarEvolution & evolution,
-                             std::optional<std::pair<std::int64_t, std::int64_t>>
-                               startRange = std::nullopt,
-                             std::optional<std::pair<std::int64_t, std::int64_t>>
-                               boundRange = std::nullopt);
+LoopBounds resolveLoopBounds(
+  llvm::Loop & loop, llvm::ScalarEvolution & evolution,
+  std::optional<std::pair<std::int64_t, std::int64_t>> startRange =
+    std::nullopt,
+  std::optional<std::pair<std::int64_t, std::int64_t>> boundRange =
+    std::nullopt);
 
 }  // namespace map::region

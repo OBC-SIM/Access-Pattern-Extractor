@@ -11,18 +11,27 @@ namespace map::region
 namespace
 {
 
-void validateInductionRange(const LoopBounds & bounds, unsigned width,
-                            bool unsignedType)
+void validateNotEqualTermination(const LoopBounds & bounds, unsigned width)
 {
   const APInt start(128, static_cast<std::uint64_t>(bounds.start), true);
   const APInt bound(128, static_cast<std::uint64_t>(bounds.bound), true);
   const APInt step(128, static_cast<std::uint64_t>(bounds.step), true);
-  const bool ascending = bounds.step > 0;
-  if ((ascending && start.sge(bound)) || (!ascending && start.sle(bound)))
-    return;
-  const auto distance = ascending ? bound - start : start - bound;
-  const auto magnitude = ascending ? step : -step;
-  const auto count = (distance + magnitude - 1).udiv(magnitude);
+  if (!start.isSignedIntN(width) || !bound.isSignedIntN(width))
+    throw std::invalid_argument("region loop endpoint overflows its type");
+  const auto distance = bound - start;
+  // Equality must be reached by integer steps before any signed wrapping.
+  if (!distance.isZero() && (distance.isNegative() != step.isNegative() ||
+                             !distance.srem(step).isZero()))
+    throw std::invalid_argument("not-equal region loop end is unreachable");
+}
+
+void validateInductionRange(const LoopBounds & bounds, unsigned width,
+                            bool unsignedType)
+{
+  const APInt start(128, static_cast<std::uint64_t>(bounds.start), true);
+  const APInt step(128, static_cast<std::uint64_t>(bounds.step), true);
+  const auto count = tripCount(bounds);
+  if (count.isZero()) return;
   const auto afterLast = start + count * step;
   if (unsignedType ? (afterLast.isNegative() || !afterLast.isIntN(width))
                    : !afterLast.isSignedIntN(width))
@@ -30,6 +39,17 @@ void validateInductionRange(const LoopBounds & bounds, unsigned width,
 }
 
 }  // namespace
+
+APInt tripCount(const LoopBounds & bounds)
+{
+  const APInt start(128, static_cast<std::uint64_t>(bounds.start), true);
+  const APInt bound(128, static_cast<std::uint64_t>(bounds.bound), true);
+  const APInt step(128, static_cast<std::uint64_t>(bounds.step), true);
+  const auto distance = bounds.step > 0 ? bound - start : start - bound;
+  if (distance.isNonPositive()) return APInt(128, 0);
+  const auto magnitude = bounds.step > 0 ? step : -step;
+  return (distance + magnitude - 1).udiv(magnitude);
+}
 
 LoopBounds resolveLoopBounds(
   Loop & loop, ScalarEvolution & evolution,
@@ -70,18 +90,33 @@ LoopBounds resolveLoopBounds(
       !step->getAPInt().isSignedIntN(64) || step->getAPInt().isZero() ||
       (start && !start->getAPInt().isSignedIntN(64)))
     throw std::invalid_argument("unresolved region loop start or step");
+  const bool notEqual = predicate == ICmpInst::ICMP_NE;
+  const auto signedStep = step->getAPInt().getSExtValue();
   const bool increasing =
-    predicate == ICmpInst::ICMP_SLT || predicate == ICmpInst::ICMP_SLE ||
-    predicate == ICmpInst::ICMP_ULT || predicate == ICmpInst::ICMP_ULE;
+    (notEqual && signedStep > 0) || predicate == ICmpInst::ICMP_SLT ||
+    predicate == ICmpInst::ICMP_SLE || predicate == ICmpInst::ICMP_ULT ||
+    predicate == ICmpInst::ICMP_ULE;
   const bool decreasing =
-    predicate == ICmpInst::ICMP_SGT || predicate == ICmpInst::ICMP_SGE ||
-    predicate == ICmpInst::ICMP_UGT || predicate == ICmpInst::ICMP_UGE;
-  LoopBounds result{startRange ? startRange->first
-                               : start->getAPInt().getSExtValue(),
-                    boundRange ? (increasing ? boundRange->second
-                                             : boundRange->first)
-                               : bound->getSExtValue(),
-                    step->getAPInt().getSExtValue()};
+    (notEqual && signedStep < 0) || predicate == ICmpInst::ICMP_SGT ||
+    predicate == ICmpInst::ICMP_SGE || predicate == ICmpInst::ICMP_UGT ||
+    predicate == ICmpInst::ICMP_UGE;
+  LoopBounds result{
+    startRange ? startRange->first : start->getAPInt().getSExtValue(),
+    boundRange ? (increasing ? boundRange->second : boundRange->first)
+               : bound->getSExtValue(),
+    signedStep};
+  const auto starts =
+    startRange.value_or(std::make_pair(result.start, result.start));
+  const auto bounds =
+    boundRange.value_or(std::make_pair(result.bound, result.bound));
+  const bool varyingEndpoints = starts.first != starts.second ||
+                                bounds.first != bounds.second;
+  if (notEqual && varyingEndpoints)
+    throw std::invalid_argument(
+      "not-equal region loop requires constant endpoints");
+  if (notEqual)
+    validateNotEqualTermination(result,
+                                variable->getType()->getIntegerBitWidth());
   if ((!increasing && !decreasing) || (increasing != (result.step > 0)) ||
       (ICmpInst::isUnsigned(predicate) &&
        (result.start < 0 || result.bound < 0 ||
@@ -105,11 +140,10 @@ LoopBounds resolveLoopBounds(
   }
   validateInductionRange(result, variable->getType()->getIntegerBitWidth(),
                          ICmpInst::isUnsigned(predicate));
-  if ((startRange && startRange->first != startRange->second) ||
-      (boundRange && boundRange->first != boundRange->second))
+  if (varyingEndpoints)
   {
     const auto width = variable->getType()->getIntegerBitWidth();
-    const auto maxStart = startRange ? startRange->second : result.start;
+    const auto maxStart = starts.second;
     const APInt maximum(128, static_cast<uint64_t>(maxStart), true);
     if (result.start > maxStart || !maximum.isSignedIntN(width))
       throw std::invalid_argument("region loop start overflows its type");

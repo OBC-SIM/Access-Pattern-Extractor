@@ -110,6 +110,26 @@ TEST(RegionValidation, KeepsZeroIterationAndDescendingLoops)
   EXPECT_EQ(*body[1].getAsObject()->getInteger("step"), -1);
 }
 
+TEST(RegionValidation, AcceptsReachableNotEqualEndpoints)
+{
+  auto result = compileBody(begin +
+    "for(int i=0;i!=6;i+=2) a[i]++;\n"
+    "for(int j=6;j!=0;j-=2) a[j]++;" + end);
+  const auto & body =
+    *(*result.getArray("functions"))[0].getAsObject()->getArray("body");
+  ASSERT_EQ(body.size(), 2U);
+  EXPECT_EQ(*body[0].getAsObject()->getInteger("bound"), 6);
+  EXPECT_EQ(*body[0].getAsObject()->getInteger("step"), 2);
+  EXPECT_EQ(*body[1].getAsObject()->getInteger("bound"), 0);
+  EXPECT_EQ(*body[1].getAsObject()->getInteger("step"), -2);
+}
+
+TEST(RegionValidation, RejectsUnreachableNotEqualEndpoint)
+{
+  expectRejected(begin + "for(int i=0;i!=5;i+=2) a[i]++;" + end,
+                 "not-equal region loop end is unreachable");
+}
+
 TEST(RegionValidation, RejectsCompilerOptionsOutsideTheAllowlist)
 {
   for (const auto * option : {"-O1",
