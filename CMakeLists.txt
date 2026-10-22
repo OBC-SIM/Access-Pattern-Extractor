@@ -14,6 +14,7 @@ add_definitions(${LLVM_DEFINITIONS})
 
 # ── LLVM Pass (shared library) ────────────────────────────
 add_library(MapBuilders OBJECT
+    src/access/PointerInduction.cpp
     src/AccessBuilder.cpp
     src/AccessMetadata.cpp
     src/AccessMetadataBuilder.cpp
@@ -61,6 +62,7 @@ find_library(GTEST_MAIN_LIB gtest_main PATHS /usr/lib/x86_64-linux-gnu)
 if(GTEST_LIB AND GTEST_MAIN_LIB)
     enable_testing()
     add_executable(MemoryAccessPatternsTests
+        src/access/PointerInduction.cpp
         tests/Statement_test.cpp
         tests/CallStmt_test.cpp
         tests/AccessBuilder_test.cpp
@@ -97,6 +99,8 @@ if(GTEST_LIB AND GTEST_MAIN_LIB)
     add_test(NAME MemoryAccessPatternsTests COMMAND MemoryAccessPatternsTests)
     llvm_map_components_to_libnames(LLVM_REGION_TEST_LIBS asmparser passes)
     add_executable(YardaIndexTests tests/IndexResolution_test.cpp
+        tests/access/PointerInduction_test.cpp
+        tests/access/AccessWidth_test.cpp
         tests/IndexAffine_test.cpp
         tests/IndexRange_test.cpp tests/IndexBinding_test.cpp
         tests/IndexFormal_test.cpp tests/IndexScope_test.cpp

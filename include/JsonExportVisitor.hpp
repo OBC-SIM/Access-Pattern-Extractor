@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "Statement.hpp"
 #include "llvm/Support/JSON.h"
 
@@ -26,6 +28,8 @@ public:
             obj["object"] = node.getObjectId();
         if (!node.getOp().empty())
             obj["op"] = node.getOp();
+        if (node.getAccessSize() > 0)
+            obj["elem_size"] = node.getAccessSize();
         Result_ = std::move(obj);
     }
 
@@ -44,6 +48,11 @@ public:
             obj["access_path"] = accessPathJson(node.getAccessPath());
         if (!node.getOp().empty())
             obj["op"] = node.getOp();
+        const auto& path = node.getAccessPath();
+        const bool hasField = std::any_of(path.begin(), path.end(),
+            [](const auto& segment) { return segment.kind == "field"; });
+        if (!hasField && node.getMetadata().elem_size > 0)
+            obj["elem_size"] = node.getMetadata().elem_size;
         Result_ = std::move(obj);
     }
 

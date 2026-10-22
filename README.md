@@ -131,8 +131,8 @@ documents must be regenerated to obtain this metadata.
 |-----------|-----------|------|
 | Function wrapper | `function`, `params`, `annotations`, `body` | 함수 이름·파라미터·본문 |
 | `Loop` | `var`, `start`, `bound`, `depth`, `body` | 중첩 루프 노드 |
-| `Array` | `name`, `object`, `indices`, `access_path`, `op` | 배열 접근. `object`가 있으면 shape/elem_size를 `metadata.objects`에서 조회 |
-| `Scalar` | `name`, `object`, `op` | 식별 가능한 canonical storage ID를 보존하는 스칼라 접근 |
+| `Array` | `name`, `object`, `indices`, `access_path`, `elem_size`, `op` | 원소 배율을 보존하는 배열 접근. shape는 object metadata에서 조회 |
+| `Scalar` | `name`, `object`, `elem_size`, `op` | canonical storage ID와 실제 load/store 폭을 보존하는 스칼라 접근 |
 | `Call` | `callee`, `args`, `arg_objects` | `ape.inline` 함수 호출. `arg_objects`는 `args`와 같은 길이의 actual object/ref 문자열 배열 |
 
 `Array.object`와 `Scalar.object`는 `global::<name>`,
@@ -140,6 +140,18 @@ documents must be regenerated to obtain this metadata.
 ID가 `metadata.objects`에 등록된 경우에만 출력됩니다. 런타임 유도 pointer
 base나 legacy access처럼 canonical storage를 정적으로 식별할 수 없으면
 `object`를 생략합니다. `name`은 표시용이며 object lookup의 fallback이 아닙니다.
+
+Scalar의 `elem_size`는 cast 이전 선언 타입과 무관한 실제 접근 바이트 폭입니다.
+Array의 원소 배율과 접근 폭이 다르거나 식별 가능한 저장 객체의 GEP chain에
+pointer cast가 있으면 거부합니다. Field path 노드는 `elem_size`를 생략하고
+object/field metadata로 root 배율과 leaf 폭을 구합니다. Inline Array 인자의
+원소 크기·행 배율이 다르면 C++ reader가 거부합니다. 폭이 없는 구 v2 Scalar
+MAP은 cast 접근의 실제 폭을 복원할 수 없으므로 원본 C/IR에서 재생성해야 합니다.
+
+Legacy 추출은 runtime 주소 접근을 object ID 없는 노드로 보존합니다. Cast와
+GEP의 순서가 달라도 같은 정책을 적용하며, 단일 runtime base의 pointer PHI도
+affine offset 증명 후 보존합니다. 이 노드는 실제 주소를 증명하지 않으며
+strict region과 ELF 주소 분석은 거부합니다.
 
 `Call.arg_objects`의 각 원소는 먼저 `metadata.objects` key로 해석합니다. key가
 있으면 callee parameter access를 actual storage object로 치환할 수 있고,
@@ -197,6 +209,11 @@ Runtime 계수 `n*i`, 나눗셈·나머지와 비선형 식은 정확한 선형�
 버리거나 평탄화 식을 여러 배열 차원으로 바꾸지 않습니다. Struct GEP의 첫
 피연산자는 필드 번호가 아니라 포인터 인덱스로 해석합니다.
 
+Strict region의 pointer recurrence는 별도의 affine byte-offset 증명을 사용하므로
+`*p; p += 2`를 허용할 수 있습니다. 일반 scaled GEP의 기존 제한은 유지하며,
+pointer cast 거부 규칙은 PHI의 모든 incoming GEP chain에도 적용합니다.
+Cast 검사는 index 검사보다 먼저 수행하므로 두 문제가 함께 있으면 cast 진단을 냅니다.
+
 출력은 괄호와 공백 없는 상수·식별자·`정수*식별자`의 합/차입니다. 식별자는
 `[A-Za-z_][A-Za-z0-9_]*`이며, 항은 이름순으로 정렬하고 중복·0항을 정리합니다.
 상수항은 마지막에 기록합니다. C의 `2*i*2`는 `4*i`, `7-i`는 `-i+7`로
@@ -231,7 +248,13 @@ MAP v2 JSON 구조를 유지하지만, 새 계수·다중 변수 식에는 H2-B 
 필요합니다. 구 reader는 문자열 trace에서 식을 그대로 반환하고 주소 분석에서
 거부합니다. 구 reader는 schema 버전도 검사하지 않으므로 버전 번호만 올려
 호환성을 보장할 수 없습니다. 새 입력에는 frontend/backend를 함께 갱신하세요.
-R2 strict 구간의 상수 시작값·종료값 및 scaled-index 거부 계약은 유지합니다.
+상수 경계의 비단위 루프에서 보조 IV의 증가 비율이 정수가 아니거나 포인터 PHI가
+있으면 모든 접근을 단위 반복 번호로 함께 변환합니다. 원래 IV의 범위·overflow
+검증은 유지합니다. `i != end`는 상수 종료값에 정확히 도달함을 증명한 경우 지원합니다.
+`*p++`와 감소하는 포인터는 단일 객체 및 동일한 스칼라 원소 타입으로 증명될 때
+초기 위치와 누적 이동량을 보존합니다. 데이터 의존 포인터·간격과 구조체 포인터
+recurrence는 거부합니다. R2 strict 구간도 같은 반복 번호를 사용하며, 원래 좌표를
+유지하는 구간의 기존 scaled-index 제한은 유지합니다.
 문자열 `start`와 `bound`에는 대응하는 C++ backend가 필요하며, 기존 Python reader는 지원하지 않습니다.
 
 `YardaIndexTests`와 `LegacyAffineRejection_*`는 region 옵션 OFF에서도 실행됩니다.

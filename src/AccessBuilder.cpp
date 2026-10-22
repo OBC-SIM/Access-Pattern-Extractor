@@ -1,7 +1,12 @@
 #include "../include/AccessBuilder.hpp"
 
+#include <algorithm>
+#include <stdexcept>
+
 #include "../include/AccessMetadataBuilder.hpp"
 #include "../include/AccessPath.hpp"
+#include "access/AccessOperands.hpp"
+#include "access/PointerInduction.hpp"
 #include "index/IndexResolution.hpp"
 #include "index/ScalarFormal.hpp"
 #include "llvm/IR/GlobalVariable.h"
@@ -87,22 +92,39 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
   Value * ptr, Instruction & I, ScalarEvolution & SE, const NameMap & names,
   const AccessMetadata & metadata, const Function & current, std::string op)
 {
+  const auto & layout = I.getModule()->getDataLayout();
+  auto * accessed = accessedType(I);
+  const auto width = static_cast<int64_t>(layout.getTypeStoreSize(accessed));
+  if (auto access = makePointerInductionAccess(ptr, I, SE, names, metadata,
+                                               current, op))
+    return access;
+  const auto pointerRoot = accessPointerRoot(ptr);
   if (auto * GEP = dyn_cast<GEPOperator>(ptr))
   {
+    // A cast may change row strides even when the scalar element size agrees.
+    // Runtime allocations have no proved storage layout; preserve their legacy
+    // unresolved-object path so ELF consumers diagnose unsupported storage.
+    if (pointerRoot.has_cast && isStorageObject(pointerRoot.value))
+      throw std::invalid_argument("unsupported array pointer cast");
     auto desc = describeGepAccess(GEP, SE, names, metadata, &I);
     std::string base = std::move(desc.name);
     auto indices = std::move(desc.indices);
     auto accessPath = std::move(desc.access_path);
     if (indices.empty() && accessPath.empty())
     {
-      auto access = std::make_unique<ScalarAccess>(base, std::move(op));
+      auto access = std::make_unique<ScalarAccess>(base, std::move(op), width);
       access->setObjectId(
         registeredObjectId(GEP->getPointerOperand(), current, names, metadata));
       return access;
     }
-    auto access = std::make_unique<ArrayAccess>(
-      base, indices, getArrayMetadata(GEP, I.getModule()->getDataLayout()),
-      std::move(op));
+    const auto arrayLayout = getArrayMetadata(GEP, layout);
+    const bool field = std::any_of(accessPath.begin(), accessPath.end(),
+      [](const auto & segment) { return segment.kind == "field"; });
+    if ((!field && arrayLayout.elem_size != width) ||
+        layout.getTypeAllocSize(accessed) != static_cast<uint64_t>(width))
+      throw std::invalid_argument("array stride differs from access width");
+    auto access = std::make_unique<ArrayAccess>(base, indices, arrayLayout,
+                                               std::move(op));
     access->setObjectId(
       registeredObjectId(GEP->getPointerOperand(), current, names, metadata));
     access->setAccessPath(std::move(accessPath));
@@ -110,22 +132,30 @@ static std::unique_ptr<Statement> makeArrayOrScalar(
   }
 
   Value * base = ptr->stripPointerCasts();
+  if (isa<GEPOperator>(base) && isStorageObject(pointerRoot.value))
+    throw std::invalid_argument("unsupported array pointer cast");
   if (!isa<Argument>(base) && !isa<GlobalVariable>(base) &&
       !isa<AllocaInst>(base))
-    return nullptr;
+    // Keep the source access, without asserting a relative offset or identity.
+    // Resolved-address consumers reject the absent object before using layout.
+    return std::make_unique<ScalarAccess>(getValueName(ptr, names),
+                                          std::move(op), width);
 
   std::string name = getBaseName(ptr, names);
   for (const User * U : base->users())
   {
-    if (isa<GetElementPtrInst>(U))
+    if (ptr == base && isa<GetElementPtrInst>(U))
     {
+      if (layout.getTypeAllocSize(accessed) != static_cast<uint64_t>(width))
+        throw std::invalid_argument("array stride differs from access width");
       auto access = std::make_unique<ArrayAccess>(
-        name, std::vector<std::string>{"0"}, std::move(op));
+        name, std::vector<std::string>{"0"}, ArrayMetadata{{}, width},
+        std::move(op));
       access->setObjectId(registeredObjectId(ptr, current, names, metadata));
       return access;
     }
   }
-  auto access = std::make_unique<ScalarAccess>(name, std::move(op));
+  auto access = std::make_unique<ScalarAccess>(name, std::move(op), width);
   access->setObjectId(registeredObjectId(ptr, current, names, metadata));
   return access;
 }

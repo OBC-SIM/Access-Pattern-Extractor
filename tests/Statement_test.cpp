@@ -91,14 +91,14 @@ TEST(ArrayAccess, JsonOpField) {
     EXPECT_EQ(str(obj->getString("op")), "store");
 }
 
-TEST(ArrayAccess, JsonOmitsMetadataFields) {
+TEST(ArrayAccess, JsonPreservesElementSizeWithoutReplacingShape) {
     ArrayAccess a("arr", {"i", "j"}, ArrayMetadata{{32, 64}, 8});
     JsonExportVisitor vis;
     a.accept(vis);
     auto* obj = toObj(vis.getResult());
     ASSERT_NE(obj, nullptr);
     EXPECT_EQ(obj->getArray("shape"), nullptr);
-    EXPECT_FALSE(obj->getInteger("elem_size").hasValue());
+    EXPECT_EQ(obj->getInteger("elem_size").getValueOr(0), 8);
 }
 
 TEST(ArrayAccess, JsonObjectFieldWhenPresent) {

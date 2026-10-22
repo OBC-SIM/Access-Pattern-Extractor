@@ -38,6 +38,12 @@ std::unique_ptr<Statement> makeDirectCall(llvm::CallBase & call,
  * @param inlineFuncs `ape.inline` annotation이 붙은 함수 집합
  * @param current     현재 분석 중인 함수
  * @return 변환된 Statement. 분석 대상이 아니면 nullptr
+ * @throws std::invalid_argument 인덱스나 포인터 PHI의 affine 이동량을 증명하지
+ * 못하거나 배열의 원소 배율과 접근 폭이 호환되지 않는 경우. 식별 가능한
+ * 저장 객체의 GEP chain에 pointer cast가 있는 경우에도 거부한다.
+ * 이 접근을 조용히 생략하지 않는다.
+ * @note Runtime 주소는 object ID 없는 노드로 보존될 수 있다. 이는 실제
+ * 주소나 상대 offset의 증명이 아니며 ELF 소비자는 이 노드를 거부한다.
  */
 std::unique_ptr<Statement>
 makeAccessFromInstr(llvm::Instruction & I, llvm::ScalarEvolution & SE,

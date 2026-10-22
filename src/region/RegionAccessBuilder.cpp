@@ -2,9 +2,11 @@
 
 #include <stdexcept>
 
+#include "../access/PointerInduction.hpp"
 #include "../index/LoopInduction.hpp"
 #include "RegionInstructions.hpp"
 #include "RegionLoopBounds.hpp"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -15,6 +17,20 @@ namespace map::region
 {
 namespace
 {
+
+void rejectPointerCasts(Value * pointer, SmallPtrSetImpl<Value *> & visited)
+{
+  if (!visited.insert(pointer).second) return;
+  if (const auto * operation = dyn_cast<Operator>(pointer))
+    if (operation->getOpcode() == Instruction::BitCast ||
+        operation->getOpcode() == Instruction::AddrSpaceCast)
+      throw std::invalid_argument("unsupported region pointer cast");
+  if (auto * gep = dyn_cast<GEPOperator>(pointer))
+    rejectPointerCasts(gep->getPointerOperand(), visited);
+  if (auto * phi = dyn_cast<PHINode>(pointer))
+    for (Value * incoming : phi->incoming_values())
+      rejectPointerCasts(incoming, visited);
+}
 
 void validateIndex(Value * value, ScalarEvolution & evolution,
                    const NameMap & names)
@@ -55,10 +71,6 @@ void validateIndex(Value * value, ScalarEvolution & evolution,
 void validatePointer(Value * pointer, ScalarEvolution & evolution,
                      const NameMap & names)
 {
-  if (const auto * operation = dyn_cast<Operator>(pointer))
-    if (operation->getOpcode() == Instruction::BitCast ||
-        operation->getOpcode() == Instruction::AddrSpaceCast)
-      throw std::invalid_argument("unsupported region pointer cast");
   if (auto * gep = dyn_cast<GEPOperator>(pointer))
   {
     for (auto & index : gep->indices())
@@ -107,6 +119,12 @@ std::unique_ptr<Statement> makeRegionAccess(
   }
   if (pointer)
   {
+    SmallPtrSet<Value *, 16> visited;
+    rejectPointerCasts(pointer, visited);
+    if (auto result = makePointerInductionAccess(
+          pointer, instruction, evolution, names, metadata, function,
+          isa<LoadInst>(instruction) ? "load" : "store"))
+      return result;
     validatePointer(pointer, evolution, names);
     auto result = makeAccessFromInstr(instruction, evolution, names, metadata,
                                       inlineFunctions, function);

@@ -34,21 +34,28 @@ public:
 
 // ── ScalarAccess: 단말 노드 ────────────────────────────────
 /**
- * @brief 루프 인덱스와 무관한 스칼라 메모리 접근을 나타낸다.
+ * @brief 스칼라 접근 또는 object ID 없는 runtime 주소 placeholder를 나타낸다.
  *
  * @param name 접근 대상 변수 이름 (LLVM Value 이름에서 추출)
  * @param op   접근 종류. "load" 또는 "store"
+ * @param access_size 실제 load/store 바이트 폭. 0이면 legacy metadata로 보완한다.
  *
  * metadata에 등록된 canonical object ID가 있으면 해당 storage identity를
  * 함께 보존한다. 런타임 유도 storage 또는 legacy access는 빈 ID를 갖는다.
  */
 class ScalarAccess : public Statement {
 public:
-    explicit ScalarAccess(std::string name, std::string op = "")
-        : name_(std::move(name)), op_(std::move(op)) {}
+    explicit ScalarAccess(std::string name, std::string op = "",
+                          int64_t access_size = 0)
+        : name_(std::move(name)), op_(std::move(op)), access_size_(access_size) {}
     void accept(Visitor& v) override { v.visit(*this); }
     const std::string& getName() const { return name_; }
     const std::string& getOp()   const { return op_; }
+    /**
+     * @brief Return the memory instruction's width independently of its object.
+     * @return Access size in bytes, or zero for unspecified legacy accesses.
+     */
+    int64_t getAccessSize() const { return access_size_; }
 
     /**
      * @brief canonical storage object ID를 반환한다.
@@ -68,6 +75,7 @@ private:
     std::string name_;
     std::string op_;
     std::string object_id_;
+    int64_t access_size_;
 };
 
 // ── ArrayAccess: 단말 노드 ─────────────────────────────────
@@ -77,6 +85,11 @@ private:
  * @param array_name  배열 베이스 포인터 이름
  * @param index_vars  각 차원의 인덱스 변수 이름 목록 (루프 IV 기반)
  * @param op          접근 종류. "load" 또는 "store"
+ *
+ * field가 없는 접근은 원소 배율과 load/store 폭이 같아야 하며, metadata의
+ * elem_size만 노드에 직렬화한다. shape는 object metadata에서 조회한다.
+ * field path가 있으면 노드 elem_size를 생략하고 object/field metadata로
+ * root 배율과 leaf 폭을 구한다.
  *
  * metadata에 등록된 canonical object ID가 있으면 해당 storage identity를
  * 함께 보존한다. 런타임 유도 storage 또는 legacy access는 빈 ID를 갖는다.
